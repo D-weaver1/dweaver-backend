@@ -38,8 +38,32 @@ npm run start:watch
 
 ## Migrations
 
-Generate a new migration:
+Generate migration:
 
 ```bash
 npm run migration:generate --name=<name>
+```
+
+Create empty migration:
+
+```bash
+npm run migration:create --name=<name>
+```
+
+Run migrations:
+
+```bash
+npm run migration:run
+```
+
+Show migration status:
+
+```bash
+npm run migration:show
+```
+
+Revert last migration:
+
+```bash
+npm run migration:revert
 ```
