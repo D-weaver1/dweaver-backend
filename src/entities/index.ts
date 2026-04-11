@@ -1,1 +1,11 @@
+export * from "./enums";
 export { User } from "./User.entity";
+export { Language } from "./Language.entity";
+export { LanguagePair } from "./LanguagePair.entity";
+export { UserLanguagePair } from "./UserLanguagePair.entity";
+export { UserMaterial } from "./UserMaterial.entity";
+export { Material } from "./Material.entity";
+export { Word } from "./Word.entity";
+export { MaterialWord } from "./MaterialWord.entity";
+export { MaterialLevel } from "./MaterialLevel.entity";
+export { MaterialLevelMaterialWord } from "./MaterialLevelMaterialWord.entity";

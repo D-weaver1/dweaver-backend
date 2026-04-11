@@ -1,6 +1,17 @@
 import path from "path";
 import { DataSource } from "typeorm";
-import * as entities from "./entities";
+import {
+    User,
+    Language,
+    LanguagePair,
+    UserLanguagePair,
+    UserMaterial,
+    Material,
+    Word,
+    MaterialWord,
+    MaterialLevel,
+    MaterialLevelMaterialWord,
+} from "./entities";
 import { env } from "./env";
 
 const db = new DataSource({
@@ -10,7 +21,18 @@ const db = new DataSource({
     username: env.POSTGRES_USER,
     password: env.POSTGRES_PASSWORD,
     database: env.POSTGRES_DB,
-    entities: [...Object.values(entities)],
+    entities: [
+        User,
+        Language,
+        LanguagePair,
+        UserLanguagePair,
+        UserMaterial,
+        Material,
+        Word,
+        MaterialWord,
+        MaterialLevel,
+        MaterialLevelMaterialWord,
+    ],
     migrations: [path.resolve(__dirname, "migrations/*")],
     synchronize: false,
     migrationsRun: false,
