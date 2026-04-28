@@ -4,15 +4,13 @@ import {
     JoinColumn,
     ManyToOne,
     PrimaryGeneratedColumn,
-    Unique,
 } from "typeorm";
 import { User } from "./User.entity";
-import { Material } from "./Material.entity";
+import { MaterialLevel } from "./MaterialLevel.entity";
 import { UserMaterialStatus } from "./enums";
 
-@Entity({ name: "user_materials" })
-@Unique(["user", "material"])
-export class UserMaterial {
+@Entity({ name: "user_material_level" })
+export class UserMaterialLevel {
     @PrimaryGeneratedColumn("uuid")
     id!: string;
 
@@ -20,9 +18,9 @@ export class UserMaterial {
     @JoinColumn({ name: "user_id" })
     user!: User;
 
-    @ManyToOne(() => Material, { nullable: false, onDelete: "CASCADE" })
-    @JoinColumn({ name: "material_id" })
-    material!: Material;
+    @ManyToOne(() => MaterialLevel, { nullable: false, onDelete: "CASCADE" })
+    @JoinColumn({ name: "material_level_id" })
+    materialLevel!: MaterialLevel;
 
     @Column({
         type: "enum",
