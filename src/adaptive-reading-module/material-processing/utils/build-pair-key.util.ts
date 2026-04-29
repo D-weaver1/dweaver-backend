@@ -8,7 +8,7 @@
 export function buildPairKey(
     sourceText: string,
     targetText: string,
-    languagePairId: number
+    languagePairId: string
 ): string {
     return JSON.stringify([sourceText, targetText, languagePairId]);
 }

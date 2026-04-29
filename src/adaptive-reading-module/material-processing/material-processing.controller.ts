@@ -7,17 +7,22 @@ export class MaterialProcessingController {
         private readonly materialProcessingService: MaterialProcessingService
     ) {}
 
-    create = (req: Request, res: Response): void => {
+    create = async (req: Request, res: Response): Promise<void> => {
         try {
             const dto = req.body as CreateMaterialProcessingDto;
 
             const result =
-                this.materialProcessingService.createMaterialFromJson(dto);
+                await this.materialProcessingService.createMaterialFromJson(
+                    dto
+                );
 
             res.status(201).json(result);
-        } catch {
+        } catch (error) {
+            console.error(error);
+
             res.status(500).json({
                 message: "Failed to process material",
+                error: error instanceof Error ? error.message : "Unknown error",
             });
         }
     };

@@ -10,7 +10,7 @@ export function buildMaterialWordKey(
     sourceText: string,
     targetText: string,
     occurrenceIndexes: number[],
-    languagePairId: number
+    languagePairId: string
 ): string {
     return JSON.stringify([
         sourceText,
