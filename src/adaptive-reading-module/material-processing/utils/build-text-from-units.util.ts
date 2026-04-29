@@ -1,5 +1,12 @@
 import { isPunctuation } from "./punctuation.util";
 
+/**
+ * buildTextFromUnits збирає готовий текст із масиву текстових одиниць.
+ *
+ * Функція додає пробіли між словами, але не додає пробіл
+ * перед знаками пунктуації, щоб сформований текст мав коректний вигляд.
+ */
+
 export function buildTextFromUnits(textUnits: string[]): string {
     let result = "";
 
