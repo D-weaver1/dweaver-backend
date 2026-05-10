@@ -9,3 +9,4 @@ export { Word } from "./Word.entity";
 export { MaterialWord } from "./MaterialWord.entity";
 export { MaterialLevel } from "./MaterialLevel.entity";
 export { MaterialLevelMaterialWord } from "./MaterialLevelMaterialWord.entity";
+export { RefreshToken } from "./RefreshToken.entity";
