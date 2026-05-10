@@ -1,3 +1,4 @@
+import { In, Not } from "typeorm";
 import db from "../../data-source";
 import { LanguagePair } from "../../entities/LanguagePair.entity";
 import { User } from "../../entities/User.entity";
@@ -139,5 +140,79 @@ export class UserLanguagePairService {
         await this.userLanguagePairRepository.save(userLanguagePair);
 
         return this.getState(userId);
+    }
+
+    async getAvailableLanguagePairs(userId: string) {
+        const selectedPairs = await this.userLanguagePairRepository.find({
+            where: {
+                user: { id: userId },
+                status: UserLanguagePairStatus.ACTIVE,
+            },
+            relations: {
+                languagePair: true,
+            },
+        });
+
+        const selectedLanguagePairIds = selectedPairs.map(
+            (item) => item.languagePair.id
+        );
+
+        const where =
+            selectedLanguagePairIds.length > 0
+                ? { id: Not(In(selectedLanguagePairIds)) }
+                : {};
+
+        const languagePairs = await this.languagePairRepository.find({
+            where,
+            relations: {
+                sourceLanguage: true,
+                targetLanguage: true,
+            },
+        });
+
+        return languagePairs.map((languagePair) =>
+            this.buildLanguagePairResponse(languagePair)
+        );
+    }
+
+    async selectLanguagePair(userId: string, languagePairId: string) {
+        const userLanguagePair = await this.userLanguagePairRepository.findOne({
+            where: {
+                user: { id: userId },
+                languagePair: { id: languagePairId },
+                status: UserLanguagePairStatus.ACTIVE,
+            },
+        });
+
+        if (!userLanguagePair) {
+            throw new Error("User language pair not found");
+        }
+
+        userLanguagePair.lastUsed = new Date();
+
+        await this.userLanguagePairRepository.save(userLanguagePair);
+
+        return this.getState(userId);
+    }
+
+    async getCurrentLanguagePairId(userId: string): Promise<string> {
+        const currentPair = await this.userLanguagePairRepository.findOne({
+            where: {
+                user: { id: userId },
+                status: UserLanguagePairStatus.ACTIVE,
+            },
+            relations: {
+                languagePair: true,
+            },
+            order: {
+                lastUsed: "DESC",
+            },
+        });
+
+        if (!currentPair) {
+            throw new Error("User has no selected language pair");
+        }
+
+        return currentPair.languagePair.id;
     }
 }
