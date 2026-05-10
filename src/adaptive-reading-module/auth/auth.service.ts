@@ -2,7 +2,7 @@ import { IsNull, MoreThan } from "typeorm";
 import db from "../../data-source";
 import { User } from "../../entities/User.entity";
 import { UserRole } from "../../entities/enums";
-import { RefreshToken } from "../../entities/Refresh-token.entity";
+import { RefreshToken } from "../../entities/RefreshToken.entity";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { REFRESH_TOKEN_EXPIRES_DAYS } from "./constants/auth.constants";

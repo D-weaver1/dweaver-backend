@@ -11,6 +11,7 @@ import {
     MaterialWord,
     MaterialLevel,
     MaterialLevelMaterialWord,
+    RefreshToken,
 } from "./entities";
 import { env } from "./env";
 
@@ -32,6 +33,7 @@ const db = new DataSource({
         MaterialWord,
         MaterialLevel,
         MaterialLevelMaterialWord,
+        RefreshToken,
     ],
     migrations: [path.resolve(__dirname, "migrations/*")],
     synchronize: false,
