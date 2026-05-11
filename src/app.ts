@@ -1,5 +1,6 @@
 import express from "express";
 import materialProcessingRoutes from "./adaptive-reading-module/material-processing/material-processing.routes";
+import userLanguagePairRoutes from "./adaptive-reading-module/user-language-pairs/user-language-pair.routes";
 import authRoutes from "./adaptive-reading-module/auth/auth.routes";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -16,10 +17,11 @@ app.use(
     })
 );
 
-app.use("/material-processing", materialProcessingRoutes);
 app.use("/auth", authRoutes);
 
 app.use("/material-processing", materialProcessingRoutes);
+
+app.use("/user-language-pairs", userLanguagePairRoutes);
 
 app.get("/health", (_req, res) => {
     res.status(200).json({
