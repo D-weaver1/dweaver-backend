@@ -1,10 +1,12 @@
 import { DataSource } from "typeorm";
 import { GetMaterialsQueryDto } from "./dto/get-materials-query.dto";
-import { MaterialRepository } from "./repositories/material.repository";
+import {
+    MaterialLanguageLevel,
+    MaterialRepository,
+} from "./repositories/material.repository";
 import { UserLanguagePairRepository } from "./repositories/user-language-pair.repository";
 
-const MATERIAL_LEVEL_GROUPS: Record<string, string[]> = {
-    A0: ["A0"],
+const MATERIAL_LEVEL_GROUPS: Record<string, MaterialLanguageLevel[]> = {
     "A1-A2": ["A1", "A2"],
     "B1-B2": ["B1", "B2"],
     "C1-C2": ["C1", "C2"],
@@ -80,8 +82,10 @@ export class MaterialService {
         return levelGroups;
     }
 
-    private getLanguageLevelsFromGroups(levelGroups: string[]): string[] {
-        const languageLevels = new Set<string>();
+    private getLanguageLevelsFromGroups(
+        levelGroups: string[]
+    ): MaterialLanguageLevel[] {
+        const languageLevels = new Set<MaterialLanguageLevel>();
 
         for (const levelGroup of levelGroups) {
             const levels = MATERIAL_LEVEL_GROUPS[levelGroup];
