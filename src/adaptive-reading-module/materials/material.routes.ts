@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../../data-source";
+import { authMiddleware } from "../auth/middlewares/auth.middleware";
 import { MaterialController } from "./material.controller";
 import { MaterialService } from "./material.service";
 import { MaterialRepository } from "./repositories/material.repository";
@@ -18,6 +19,6 @@ const materialService = new MaterialService(
 
 const materialController = new MaterialController(materialService);
 
-router.get("/", materialController.getAll);
+router.get("/", authMiddleware, materialController.getAll);
 
 export default router;
