@@ -4,6 +4,7 @@ import userLanguagePairRoutes from "./adaptive-reading-module/user-language-pair
 import authRoutes from "./adaptive-reading-module/auth/auth.routes";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import materialRoutes from "./adaptive-reading-module/materials/material.routes";
 
 const app = express();
 
@@ -22,6 +23,8 @@ app.use("/auth", authRoutes);
 app.use("/material-processing", materialProcessingRoutes);
 
 app.use("/user-language-pairs", userLanguagePairRoutes);
+
+app.use("/materials", materialRoutes);
 
 app.get("/health", (_req, res) => {
     res.status(200).json({
