@@ -22,3 +22,11 @@ export enum UserMaterialStatus {
     IN_PROGRESS = "in_progress",
     COMPLETED = "completed",
 }
+
+export enum AiAnalysisJobStatus {
+    PENDING = "pending",
+    PROCESSING = "processing",
+    WAITING_RATE_LIMIT = "waiting_rate_limit",
+    COMPLETED = "completed",
+    FAILED = "failed",
+}
