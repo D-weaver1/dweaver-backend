@@ -215,13 +215,48 @@ export class UserLanguagePairService {
 
         return currentPair.languagePair.id;
     }
+    async getSettingsState(userId: string) {
+        const userLanguagePairs = await this.userLanguagePairRepository.find({
+            where: {
+                user: { id: userId },
+            },
+            relations: {
+                languagePair: {
+                    sourceLanguage: true,
+                    targetLanguage: true,
+                },
+            },
+            order: {
+                lastUsed: "DESC",
+            },
+        });
 
-    async hideLanguagePair(userId: string, languagePairId: string) {
+        const activePairs = userLanguagePairs.filter(
+            (item) => item.status === UserLanguagePairStatus.ACTIVE
+        );
+
+        const currentPair = activePairs[0] ?? null;
+
+        return {
+            shouldChooseLanguagePair: activePairs.length === 0,
+            currentLanguagePair: currentPair
+                ? this.buildLanguagePairResponse(currentPair.languagePair)
+                : null,
+            userLanguagePairs: userLanguagePairs.map((item) =>
+                this.buildUserLanguagePairResponse(item)
+            ),
+        };
+    }
+
+    private async changeLanguagePairStatus(
+        userId: string,
+        languagePairId: string,
+        status: UserLanguagePairStatus
+    ) {
         const userLanguagePair = await this.userLanguagePairRepository.findOne({
             where: {
                 user: { id: userId },
                 languagePair: { id: languagePairId },
-                status: UserLanguagePairStatus.ACTIVE,
             },
         });
 
@@ -229,11 +264,27 @@ export class UserLanguagePairService {
             throw new Error("User language pair not found");
         }
 
-        userLanguagePair.status = UserLanguagePairStatus.HIDDEN;
+        userLanguagePair.status = status;
 
         await this.userLanguagePairRepository.save(userLanguagePair);
 
-        return this.getState(userId);
+        return this.getSettingsState(userId);
+    }
+
+    async activateLanguagePair(userId: string, languagePairId: string) {
+        return this.changeLanguagePairStatus(
+            userId,
+            languagePairId,
+            UserLanguagePairStatus.ACTIVE
+        );
+    }
+
+    async hideLanguagePair(userId: string, languagePairId: string) {
+        return this.changeLanguagePairStatus(
+            userId,
+            languagePairId,
+            UserLanguagePairStatus.HIDDEN
+        );
     }
 
     async removeLanguagePair(userId: string, languagePairId: string) {
@@ -250,6 +301,6 @@ export class UserLanguagePairService {
 
         await this.userLanguagePairRepository.remove(userLanguagePair);
 
-        return this.getState(userId);
+        return this.getSettingsState(userId);
     }
 }
