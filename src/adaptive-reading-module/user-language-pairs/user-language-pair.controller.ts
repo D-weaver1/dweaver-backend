@@ -108,4 +108,56 @@ export class UserLanguagePairController {
             });
         }
     }
+
+    async hideLanguagePair(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.user?.id;
+
+            if (!userId) {
+                return res.status(401).json({
+                    message: "Unauthorized",
+                });
+            }
+
+            const result = await userLanguagePairService.hideLanguagePair(
+                userId,
+                req.params.languagePairId
+            );
+
+            return res.status(200).json(result);
+        } catch (error) {
+            return res.status(404).json({
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to hide language pair",
+            });
+        }
+    }
+
+    async removeLanguagePair(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.user?.id;
+
+            if (!userId) {
+                return res.status(401).json({
+                    message: "Unauthorized",
+                });
+            }
+
+            const result = await userLanguagePairService.removeLanguagePair(
+                userId,
+                req.params.languagePairId
+            );
+
+            return res.status(200).json(result);
+        } catch (error) {
+            return res.status(404).json({
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to remove language pair",
+            });
+        }
+    }
 }

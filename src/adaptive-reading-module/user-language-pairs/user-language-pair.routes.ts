@@ -33,4 +33,17 @@ router.patch(
     )
 );
 
+router.patch(
+    "/:languagePairId/hide",
+    authMiddleware,
+    userLanguagePairController.hideLanguagePair.bind(userLanguagePairController)
+);
+
+router.delete(
+    "/:languagePairId",
+    authMiddleware,
+    userLanguagePairController.removeLanguagePair.bind(
+        userLanguagePairController
+    )
+);
 export default router;
