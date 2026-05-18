@@ -215,4 +215,41 @@ export class UserLanguagePairService {
 
         return currentPair.languagePair.id;
     }
+
+    async hideLanguagePair(userId: string, languagePairId: string) {
+        const userLanguagePair = await this.userLanguagePairRepository.findOne({
+            where: {
+                user: { id: userId },
+                languagePair: { id: languagePairId },
+                status: UserLanguagePairStatus.ACTIVE,
+            },
+        });
+
+        if (!userLanguagePair) {
+            throw new Error("User language pair not found");
+        }
+
+        userLanguagePair.status = UserLanguagePairStatus.HIDDEN;
+
+        await this.userLanguagePairRepository.save(userLanguagePair);
+
+        return this.getState(userId);
+    }
+
+    async removeLanguagePair(userId: string, languagePairId: string) {
+        const userLanguagePair = await this.userLanguagePairRepository.findOne({
+            where: {
+                user: { id: userId },
+                languagePair: { id: languagePairId },
+            },
+        });
+
+        if (!userLanguagePair) {
+            throw new Error("User language pair not found");
+        }
+
+        await this.userLanguagePairRepository.remove(userLanguagePair);
+
+        return this.getState(userId);
+    }
 }
