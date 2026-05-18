@@ -29,4 +29,11 @@ export class Material {
 
     @Column({ type: "text" })
     text!: string;
+
+    @Column({
+        name: "text_units",
+        type: "jsonb",
+        default: () => "'[]'::jsonb",
+    })
+    textUnits!: string[];
 }
