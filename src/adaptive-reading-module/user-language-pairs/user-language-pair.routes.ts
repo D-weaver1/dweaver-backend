@@ -12,6 +12,12 @@ router.get(
 );
 
 router.get(
+    "/settings-state",
+    authMiddleware,
+    userLanguagePairController.getSettingsState.bind(userLanguagePairController)
+);
+
+router.get(
     "/available",
     authMiddleware,
     userLanguagePairController.getAvailableLanguagePairs.bind(
@@ -29,6 +35,14 @@ router.patch(
     "/:languagePairId/select",
     authMiddleware,
     userLanguagePairController.selectLanguagePair.bind(
+        userLanguagePairController
+    )
+);
+
+router.patch(
+    "/:languagePairId/activate",
+    authMiddleware,
+    userLanguagePairController.activateLanguagePair.bind(
         userLanguagePairController
     )
 );
