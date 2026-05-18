@@ -128,6 +128,26 @@ export class AuthService {
         };
     }
 
+    async getMe(userId: string) {
+        const user = await this.userRepository.findOne({
+            where: {
+                id: userId,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+            },
+        });
+
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        return user;
+    }
+
     async logout(refreshToken: string | undefined): Promise<void> {
         if (!refreshToken) {
             return;
