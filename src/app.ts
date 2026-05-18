@@ -4,6 +4,7 @@ import userLanguagePairRoutes from "./adaptive-reading-module/user-language-pair
 import authRoutes from "./adaptive-reading-module/auth/auth.routes";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import materialRoutes from "./adaptive-reading-module/materials/material.routes";
 
 import languageRoutes from "./management-module/language/language.routes";
 import languagePairRoutes from "./management-module/language-pair/language-pair.routes";
@@ -27,6 +28,7 @@ app.use("/material-processing", materialProcessingRoutes);
 
 app.use("/user-language-pairs", userLanguagePairRoutes);
 
+app.use("/materials", materialRoutes);
 app.use("/languages", languageRoutes);
 app.use("/language-pairs", languagePairRoutes);
 app.use("/ai-text-analysis", aiTextAnalysisRoutes);

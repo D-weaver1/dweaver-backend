@@ -12,6 +12,12 @@ router.get(
 );
 
 router.get(
+    "/settings-state",
+    authMiddleware,
+    userLanguagePairController.getSettingsState.bind(userLanguagePairController)
+);
+
+router.get(
     "/available",
     authMiddleware,
     userLanguagePairController.getAvailableLanguagePairs.bind(
@@ -33,4 +39,25 @@ router.patch(
     )
 );
 
+router.patch(
+    "/:languagePairId/activate",
+    authMiddleware,
+    userLanguagePairController.activateLanguagePair.bind(
+        userLanguagePairController
+    )
+);
+
+router.patch(
+    "/:languagePairId/hide",
+    authMiddleware,
+    userLanguagePairController.hideLanguagePair.bind(userLanguagePairController)
+);
+
+router.delete(
+    "/:languagePairId",
+    authMiddleware,
+    userLanguagePairController.removeLanguagePair.bind(
+        userLanguagePairController
+    )
+);
 export default router;
