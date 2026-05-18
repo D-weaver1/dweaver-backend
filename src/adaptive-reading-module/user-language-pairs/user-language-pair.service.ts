@@ -55,10 +55,11 @@ export class UserLanguagePairService {
             },
         });
 
-        const currentPair = selectedPairs[0] ?? null;
+        const currentPair =
+            selectedPairs.find((item) => item.lastUsed !== null) ?? null;
 
         return {
-            shouldChooseLanguagePair: selectedPairs.length === 0,
+            shouldChooseLanguagePair: currentPair === null,
             currentLanguagePair: currentPair
                 ? this.buildLanguagePairResponse(currentPair.languagePair)
                 : null,
@@ -121,7 +122,6 @@ export class UserLanguagePairService {
             existingUserLanguagePair.status === UserLanguagePairStatus.HIDDEN
         ) {
             existingUserLanguagePair.status = UserLanguagePairStatus.ACTIVE;
-            existingUserLanguagePair.lastUsed = new Date();
 
             await this.userLanguagePairRepository.save(
                 existingUserLanguagePair
@@ -130,18 +130,24 @@ export class UserLanguagePairService {
             return this.getState(userId);
         }
 
+        const activePairsCount = await this.userLanguagePairRepository.count({
+            where: {
+                user: { id: userId },
+                status: UserLanguagePairStatus.ACTIVE,
+            },
+        });
+
         const userLanguagePair = this.userLanguagePairRepository.create({
             user,
             languagePair,
             status: UserLanguagePairStatus.ACTIVE,
-            lastUsed: new Date(),
+            lastUsed: activePairsCount === 0 ? new Date() : null,
         });
 
         await this.userLanguagePairRepository.save(userLanguagePair);
 
         return this.getState(userId);
     }
-
     async getAvailableLanguagePairs(userId: string) {
         const selectedPairs = await this.userLanguagePairRepository.find({
             where: {
@@ -195,8 +201,8 @@ export class UserLanguagePairService {
         return this.getState(userId);
     }
 
-    async getCurrentLanguagePairId(userId: string): Promise<string> {
-        const currentPair = await this.userLanguagePairRepository.findOne({
+    async getCurrentLanguagePairId(userId: string): Promise<string | null> {
+        const activePairs = await this.userLanguagePairRepository.find({
             where: {
                 user: { id: userId },
                 status: UserLanguagePairStatus.ACTIVE,
@@ -209,12 +215,12 @@ export class UserLanguagePairService {
             },
         });
 
-        if (!currentPair) {
-            throw new Error("User has no selected language pair");
-        }
+        const currentPair =
+            activePairs.find((item) => item.lastUsed !== null) ?? null;
 
-        return currentPair.languagePair.id;
+        return currentPair?.languagePair.id ?? null;
     }
+
     async getSettingsState(userId: string) {
         const userLanguagePairs = await this.userLanguagePairRepository.find({
             where: {
@@ -235,10 +241,11 @@ export class UserLanguagePairService {
             (item) => item.status === UserLanguagePairStatus.ACTIVE
         );
 
-        const currentPair = activePairs[0] ?? null;
+        const currentPair =
+            activePairs.find((item) => item.lastUsed !== null) ?? null;
 
         return {
-            shouldChooseLanguagePair: activePairs.length === 0,
+            shouldChooseLanguagePair: currentPair === null,
             currentLanguagePair: currentPair
                 ? this.buildLanguagePairResponse(currentPair.languagePair)
                 : null,
@@ -280,11 +287,26 @@ export class UserLanguagePairService {
     }
 
     async hideLanguagePair(userId: string, languagePairId: string) {
-        return this.changeLanguagePairStatus(
-            userId,
-            languagePairId,
-            UserLanguagePairStatus.HIDDEN
-        );
+        const userLanguagePair = await this.userLanguagePairRepository.findOne({
+            where: {
+                user: { id: userId },
+                languagePair: { id: languagePairId },
+            },
+        });
+
+        if (!userLanguagePair) {
+            throw new Error("User language pair not found");
+        }
+
+        userLanguagePair.status = UserLanguagePairStatus.HIDDEN;
+
+        if (userLanguagePair.lastUsed !== null) {
+            userLanguagePair.lastUsed = null;
+        }
+
+        await this.userLanguagePairRepository.save(userLanguagePair);
+
+        return this.getSettingsState(userId);
     }
 
     async removeLanguagePair(userId: string, languagePairId: string) {
