@@ -15,6 +15,12 @@ import { AiAnalysisJobRepository } from "./repositories/ai-analysis-job.reposito
 import { AiAnalysisJobService } from "./services/ai-analysis-job.service";
 import { AiAnalysisJobController } from "./ai-analysis-job.controller";
 import { AiAnalysisJobWorkerService } from "./services/ai-analysis-job-worker.service";
+import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth.middleware";
+import { rolesMiddleware } from "../adaptive-reading-module/auth/middlewares/roles.middleware";
+import { UserRole } from "../entities/enums";
+import { MaterialProcessingService } from "../adaptive-reading-module/material-processing/material-processing.service";
+import { LanguagePairRepository as MaterialProcessingLanguagePairRepository } from "../adaptive-reading-module/material-processing/repositories/language-pair.repository";
+import { MaterialProcessingRepository } from "../adaptive-reading-module/material-processing/repositories/material-processing.repository";
 
 const router = Router();
 
@@ -58,17 +64,51 @@ const aiAnalysisJobController = new AiAnalysisJobController(
     aiAnalysisJobService
 );
 
+const materialProcessingLanguagePairRepository =
+    new MaterialProcessingLanguagePairRepository();
+
+const materialProcessingRepository = new MaterialProcessingRepository();
+
+const materialProcessingService = new MaterialProcessingService(
+    db,
+    materialProcessingLanguagePairRepository,
+    materialProcessingRepository
+);
+
 const aiAnalysisJobWorkerService = new AiAnalysisJobWorkerService(
     aiAnalysisJobRepository,
-    aiTextAnalysisService
+    aiTextAnalysisService,
+    materialProcessingService
 );
 
 aiAnalysisJobWorkerService.start();
 
-router.post("/analyze", aiTextAnalysisController.analyze);
+router.post(
+    "/analyze",
+    authMiddleware,
+    rolesMiddleware(UserRole.ADMIN),
+    aiTextAnalysisController.analyze
+);
 
-router.post("/jobs", aiAnalysisJobController.createJobs);
-router.get("/jobs", aiAnalysisJobController.getRecentJobs);
-router.get("/jobs/:id", aiAnalysisJobController.getJob);
+router.post(
+    "/jobs",
+    authMiddleware,
+    rolesMiddleware(UserRole.ADMIN),
+    aiAnalysisJobController.createJobs
+);
+
+router.get(
+    "/jobs",
+    authMiddleware,
+    rolesMiddleware(UserRole.ADMIN),
+    aiAnalysisJobController.getRecentJobs
+);
+
+router.get(
+    "/jobs/:id",
+    authMiddleware,
+    rolesMiddleware(UserRole.ADMIN),
+    aiAnalysisJobController.getJob
+);
 
 export default router;
