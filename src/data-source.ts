@@ -12,6 +12,8 @@ import {
     MaterialLevel,
     MaterialLevelMaterialWord,
     RefreshToken,
+    AiAnalysisJob,
+    AiAnalysisJobPayload,
 } from "./entities";
 import { env } from "./env";
 
@@ -34,6 +36,8 @@ const db = new DataSource({
         MaterialLevel,
         MaterialLevelMaterialWord,
         RefreshToken,
+        AiAnalysisJob,
+        AiAnalysisJobPayload,
     ],
     migrations: [path.resolve(__dirname, "migrations/*")],
     synchronize: false,
