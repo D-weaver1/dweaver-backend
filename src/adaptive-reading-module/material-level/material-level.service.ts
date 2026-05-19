@@ -1,5 +1,5 @@
 import { MaterialLevelRepository } from "./repositories/material-level.repository";
-
+import { UserMaterialStatus } from "../../entities/enums";
 type ReadingUnit = {
     index: number;
     text: string;
@@ -16,19 +16,38 @@ export class MaterialLevelService {
         private readonly materialLevelRepository: MaterialLevelRepository
     ) {}
 
-    async getMaterialLevels(materialId: string) {
+    async getMaterialLevels(materialId: string, userId: string) {
         const levels =
             await this.materialLevelRepository.findLevelsByMaterialId(
                 materialId
             );
 
+        const progressRecords =
+            await this.materialLevelRepository.findUserMaterialLevelsByLevelIds(
+                userId,
+                levels.map((level) => level.id)
+            );
+
+        const progressByLevelId = new Map<string, UserMaterialStatus>();
+
+        for (const progress of progressRecords) {
+            progressByLevelId.set(progress.materialLevel.id, progress.status);
+        }
+
         return levels.map((level) => ({
             id: level.id,
             factor: level.factor,
+            status:
+                progressByLevelId.get(level.id) ??
+                UserMaterialStatus.NOT_STARTED,
         }));
     }
 
-    async getMaterialLevelReading(materialId: string, levelId: string) {
+    async getMaterialLevelReading(
+        materialId: string,
+        levelId: string,
+        userId: string
+    ) {
         const material =
             await this.materialLevelRepository.findMaterialById(materialId);
 
@@ -55,6 +74,12 @@ export class MaterialLevelService {
             throw new Error("Material level not found");
         }
 
+        const progress =
+            await this.materialLevelRepository.findUserMaterialLevel(
+                userId,
+                levelId
+            );
+
         const levelWords =
             await this.materialLevelRepository.findLevelWords(levelId);
 
@@ -68,9 +93,26 @@ export class MaterialLevelService {
             }
         >();
 
+        const translatedWordsMap = new Map<
+            string,
+            {
+                wordId: string;
+                materialWordId: string;
+                sourceText: string;
+                targetText: string;
+            }
+        >();
+
         for (const levelWord of levelWords) {
             const materialWord = levelWord.materialWord;
             const word = materialWord.word;
+
+            translatedWordsMap.set(materialWord.id, {
+                wordId: word.id,
+                materialWordId: materialWord.id,
+                sourceText: word.sourceText,
+                targetText: word.translation,
+            });
 
             for (const index of materialWord.indexes) {
                 translatedByIndex.set(index, {
@@ -118,7 +160,93 @@ export class MaterialLevelService {
             levelId: materialLevel.id,
             factor: materialLevel.factor,
             text: materialLevel.text,
+            progressStatus: progress?.status ?? UserMaterialStatus.NOT_STARTED,
             units,
+            translatedWords: Array.from(translatedWordsMap.values()),
+        };
+    }
+
+    async startMaterialLevel(
+        materialId: string,
+        levelId: string,
+        userId: string
+    ) {
+        const materialLevel =
+            await this.materialLevelRepository.findLevelByMaterialId(
+                materialId,
+                levelId
+            );
+
+        if (!materialLevel) {
+            throw new Error("Material level not found");
+        }
+
+        const existing =
+            await this.materialLevelRepository.findUserMaterialLevel(
+                userId,
+                levelId
+            );
+
+        if (existing?.status === UserMaterialStatus.COMPLETED) {
+            return {
+                materialId,
+                levelId,
+                status: existing.status,
+            };
+        }
+
+        const progress =
+            await this.materialLevelRepository.saveUserMaterialLevel(
+                userId,
+                levelId,
+                UserMaterialStatus.IN_PROGRESS
+            );
+
+        return {
+            materialId,
+            levelId,
+            status: progress.status,
+        };
+    }
+
+    async completeMaterialLevel(
+        materialId: string,
+        levelId: string,
+        userId: string
+    ) {
+        const materialLevel =
+            await this.materialLevelRepository.findLevelByMaterialId(
+                materialId,
+                levelId
+            );
+
+        if (!materialLevel) {
+            throw new Error("Material level not found");
+        }
+
+        const progress =
+            await this.materialLevelRepository.saveUserMaterialLevel(
+                userId,
+                levelId,
+                UserMaterialStatus.COMPLETED
+            );
+
+        return {
+            materialId,
+            levelId,
+            status: progress.status,
+        };
+    }
+
+    async getMaterialsProgressSummary(userId: string, materialIds?: string[]) {
+        const summaries =
+            await this.materialLevelRepository.getMaterialsProgressSummary(
+                userId,
+                materialIds
+            );
+
+        return {
+            summaries,
         };
     }
 }
