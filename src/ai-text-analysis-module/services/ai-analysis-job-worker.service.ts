@@ -2,6 +2,8 @@ import { AiAnalysisJobRepository } from "../repositories/ai-analysis-job.reposit
 import { AiTextAnalysisService } from "../ai-text-analysis.service";
 import { AiAnalysisResult } from "../types/ai-analysis-result.type";
 import { TextChunk } from "./text-chunker.service";
+import { MaterialProcessingService } from "../../adaptive-reading-module/material-processing/material-processing.service";
+import { CreateMaterialProcessingDto } from "../../adaptive-reading-module/material-processing/dto/create-material-processing.dto";
 
 export class AiAnalysisJobWorkerService {
     private readonly intervalMs = 5000;
@@ -10,7 +12,8 @@ export class AiAnalysisJobWorkerService {
 
     constructor(
         private readonly aiAnalysisJobRepository: AiAnalysisJobRepository,
-        private readonly aiTextAnalysisService: AiTextAnalysisService
+        private readonly aiTextAnalysisService: AiTextAnalysisService,
+        private readonly materialProcessingService: MaterialProcessingService
     ) {}
 
     start(): void {
@@ -133,7 +136,7 @@ export class AiAnalysisJobWorkerService {
                 );
             }
 
-            const resultForSecondModule = {
+            const resultForSecondModule: CreateMaterialProcessingDto = {
                 title: job.title,
                 language_level: job.languageLevel,
                 source_language: sourceLanguage,
@@ -143,10 +146,23 @@ export class AiAnalysisJobWorkerService {
                 pairs: partialResult.pairs,
             };
 
-            await this.aiAnalysisJobRepository.markCompleted(
-                job,
-                resultForSecondModule
+            console.log(
+                `[AI_WORKER] Job ${job.id}: sending result to material-processing module`
             );
+
+            const materialProcessingResult =
+                await this.materialProcessingService.createMaterialFromJson(
+                    resultForSecondModule
+                );
+
+            console.log(
+                `[AI_WORKER] Job ${job.id}: material-processing completed`
+            );
+
+            await this.aiAnalysisJobRepository.markCompleted(job, {
+                sent_to_material_processing: true,
+                material_processing_result: materialProcessingResult,
+            });
 
             await this.aiAnalysisJobRepository.deletePayloadByJobId(job.id);
 

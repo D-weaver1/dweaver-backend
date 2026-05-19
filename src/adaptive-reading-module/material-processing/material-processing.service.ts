@@ -30,6 +30,7 @@ export class MaterialProcessingService {
                     {
                         title: dto.title,
                         text: dto.original_text,
+                        textUnits: dto.text_units,
                         languageLevel: dto.language_level,
                         languagePairId,
                     }

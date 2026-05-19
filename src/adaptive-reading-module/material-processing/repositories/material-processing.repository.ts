@@ -15,10 +15,10 @@ import { buildMaterialWordKey } from "../utils/build-material-word-key.util";
 type CreateMaterialInput = {
     title: string;
     text: string;
+    textUnits: string[];
     languageLevel: string;
     languagePairId: string;
 };
-
 export class MaterialProcessingRepository {
     async createMaterial(
         manager: EntityManager,
@@ -29,6 +29,7 @@ export class MaterialProcessingRepository {
         const material = materialRepository.create({
             title: input.title,
             text: input.text,
+            textUnits: input.textUnits,
             languageLevel: input.languageLevel as LanguageLevel,
             languagePair: {
                 id: input.languagePairId,
