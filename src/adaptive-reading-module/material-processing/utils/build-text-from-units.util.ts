@@ -1,5 +1,7 @@
 import { isPunctuation } from "./punctuation.util";
 
+const PARAGRAPH_BREAK_UNIT = "\n\n";
+
 /**
  * buildTextFromUnits збирає готовий текст із масиву текстових одиниць.
  *
@@ -11,7 +13,12 @@ export function buildTextFromUnits(textUnits: string[]): string {
     let result = "";
 
     for (const unit of textUnits) {
-        if (!result) {
+        if (unit === PARAGRAPH_BREAK_UNIT) {
+            result = `${result.trimEnd()}${PARAGRAPH_BREAK_UNIT}`;
+            continue;
+        }
+
+        if (!result || result.endsWith(PARAGRAPH_BREAK_UNIT)) {
             result += unit;
             continue;
         }
@@ -23,5 +30,5 @@ export function buildTextFromUnits(textUnits: string[]): string {
         }
     }
 
-    return result;
+    return result.trim();
 }
