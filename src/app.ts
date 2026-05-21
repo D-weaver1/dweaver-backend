@@ -10,6 +10,7 @@ import languageRoutes from "./management-module/language/language.routes";
 import languagePairRoutes from "./management-module/language-pair/language-pair.routes";
 import aiTextAnalysisRoutes from "./ai-text-analysis-module/ai-text-analysis.routes";
 import materialLevelRoutes from "./adaptive-reading-module/material-level/material-level.routes";
+import ttsRoutes from "./adaptive-reading-module/tts/tts.routes";
 
 const app = express();
 
@@ -38,6 +39,8 @@ app.use("/languages", languageRoutes);
 app.use("/language-pairs", languagePairRoutes);
 
 app.use("/ai-text-analysis", aiTextAnalysisRoutes);
+
+app.use("/tts", ttsRoutes);
 
 app.get("/health", (_req, res) => {
     res.status(200).json({
