@@ -18,19 +18,44 @@ export class TextChunkerService {
             .map((paragraph) => paragraph.trim())
             .filter(Boolean);
 
+        let currentChunk = "";
+
+        const flushCurrentChunk = () => {
+            if (!currentChunk.trim()) {
+                return;
+            }
+
+            chunks.push(currentChunk.trim());
+            currentChunk = "";
+        };
+
         for (const paragraph of paragraphs) {
-            if (this.estimateTokens(paragraph) <= maxTokens) {
-                chunks.push(paragraph);
+            if (this.estimateTokens(paragraph) > maxTokens) {
+                flushCurrentChunk();
+
+                const sentenceChunks = this.splitLargeTextBySentences(
+                    paragraph,
+                    maxChars
+                );
+
+                chunks.push(...sentenceChunks);
                 continue;
             }
 
-            const sentenceChunks = this.splitLargeTextBySentences(
-                paragraph,
-                maxChars
-            );
+            const candidate = currentChunk
+                ? `${currentChunk}\n\n${paragraph}`
+                : paragraph;
 
-            chunks.push(...sentenceChunks);
+            if (this.estimateTokens(candidate) <= maxTokens) {
+                currentChunk = candidate;
+                continue;
+            }
+
+            flushCurrentChunk();
+            currentChunk = paragraph;
         }
+
+        flushCurrentChunk();
 
         if (chunks.length === 0 && text.trim()) {
             chunks.push(text.trim());

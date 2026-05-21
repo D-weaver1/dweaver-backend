@@ -109,7 +109,6 @@ export class AiAnalysisJobRepository {
     }
 
     async pickNextProcessableJob(): Promise<AiAnalysisJob | null> {
-        const now = new Date();
         const jobRepository = this.dataSource.getRepository(AiAnalysisJob);
 
         const job = await jobRepository.findOne({
@@ -119,11 +118,15 @@ export class AiAnalysisJobRepository {
                 },
                 {
                     status: AiAnalysisJobStatus.WAITING_RATE_LIMIT,
-                    nextAttemptAt: LessThanOrEqual(now),
+                    nextAttemptAt: LessThanOrEqual(new Date()),
                 },
                 {
                     status: AiAnalysisJobStatus.WAITING_RATE_LIMIT,
                     nextAttemptAt: IsNull(),
+                },
+                {
+                    status: AiAnalysisJobStatus.WAITING_RETRY,
+                    nextAttemptAt: LessThanOrEqual(new Date()),
                 },
             ],
             relations: {
@@ -208,6 +211,20 @@ export class AiAnalysisJobRepository {
         const jobRepository = this.dataSource.getRepository(AiAnalysisJob);
 
         job.status = AiAnalysisJobStatus.WAITING_RATE_LIMIT;
+        job.errorMessage = errorMessage;
+        job.nextAttemptAt = nextAttemptAt;
+
+        return jobRepository.save(job);
+    }
+
+    async markWaitingRetry(
+        job: AiAnalysisJob,
+        errorMessage: string,
+        nextAttemptAt: Date
+    ): Promise<AiAnalysisJob> {
+        const jobRepository = this.dataSource.getRepository(AiAnalysisJob);
+
+        job.status = AiAnalysisJobStatus.WAITING_RETRY;
         job.errorMessage = errorMessage;
         job.nextAttemptAt = nextAttemptAt;
 

@@ -1,5 +1,7 @@
 import { AiAnalysisResult, AiPair } from "../types/ai-analysis-result.type";
 
+const PARAGRAPH_BREAK_UNIT = "\n\n";
+
 export class ResponseValidatorService {
     validate(data: unknown): AiAnalysisResult {
         if (!this.isObject(data)) {
@@ -31,17 +33,19 @@ export class ResponseValidatorService {
             throw new Error("AI response original_text is invalid");
         }
 
-        if (
-            !Array.isArray(text_units) ||
-            text_units.length === 0 ||
-            !text_units.every(
-                (unit) => typeof unit === "string" && unit.trim().length > 0
-            )
-        ) {
+        if (!Array.isArray(text_units) || text_units.length === 0) {
             throw new Error("AI response text_units is invalid");
         }
 
-        const normalizedTextUnits = text_units.map((unit) => unit.trim());
+        const normalizedTextUnits = text_units.map((unit, unitIndex) => {
+            if (typeof unit !== "string") {
+                throw new Error(
+                    `AI response text_units item at index ${unitIndex} is invalid`
+                );
+            }
+
+            return this.normalizeTextUnit(unit, unitIndex);
+        });
 
         if (!Array.isArray(pairs) || pairs.length === 0) {
             throw new Error("AI response pairs is invalid");
@@ -68,6 +72,12 @@ export class ResponseValidatorService {
 
             const normalizedSourceText = source_text.trim();
             const normalizedTargetText = target_text.trim();
+
+            if (this.isParagraphBreak(normalizedSourceText)) {
+                throw new Error(
+                    `Pair at index ${pairIndex} must not use paragraph break as source_text`
+                );
+            }
 
             if (this.looksLikeSentence(normalizedSourceText)) {
                 throw new Error(
@@ -101,6 +111,12 @@ export class ResponseValidatorService {
             for (const index of uniqueIndexes) {
                 const unitAtIndex = normalizedTextUnits[index];
 
+                if (this.isParagraphBreak(unitAtIndex)) {
+                    throw new Error(
+                        `Pair at index ${pairIndex} points to paragraph break at position ${index}`
+                    );
+                }
+
                 if (unitAtIndex !== normalizedSourceText) {
                     throw new Error(
                         `Pair at index ${pairIndex} does not match text_units at position ${index}: expected "${normalizedSourceText}", got "${unitAtIndex}"`
@@ -123,6 +139,26 @@ export class ResponseValidatorService {
             text_units: normalizedTextUnits,
             pairs: validatedPairs,
         };
+    }
+
+    private normalizeTextUnit(unit: string, unitIndex: number): string {
+        if (this.isParagraphBreak(unit)) {
+            return PARAGRAPH_BREAK_UNIT;
+        }
+
+        const normalizedUnit = unit.trim();
+
+        if (!normalizedUnit) {
+            throw new Error(
+                `AI response text_units item at index ${unitIndex} is empty`
+            );
+        }
+
+        return normalizedUnit;
+    }
+
+    private isParagraphBreak(value: string): boolean {
+        return value === PARAGRAPH_BREAK_UNIT || value.trim() === "\\n\\n";
     }
 
     private looksLikeSentence(value: string): boolean {

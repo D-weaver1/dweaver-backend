@@ -27,6 +27,7 @@ export enum AiAnalysisJobStatus {
     PENDING = "pending",
     PROCESSING = "processing",
     WAITING_RATE_LIMIT = "waiting_rate_limit",
+    WAITING_RETRY = "waiting_retry",
     COMPLETED = "completed",
     FAILED = "failed",
 }

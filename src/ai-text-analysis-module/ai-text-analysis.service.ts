@@ -8,10 +8,12 @@ import { LanguagePairValidatorService } from "./services/language-pair-validator
 import { TextChunk, TextChunkerService } from "./services/text-chunker.service";
 import { AnalysisResultMergerService } from "./services/analysis-result-merger.service";
 import { AiAnalysisResult } from "./types/ai-analysis-result.type";
+import { aiJobConfig } from "./config/ai-job.config";
 
 export class AiTextAnalysisService {
-    private readonly maxValidationAttempts = 3;
-    private readonly maxNetworkRetries = 2;
+    private readonly maxValidationAttempts = aiJobConfig.validationMaxAttempts;
+
+    private readonly maxNetworkRetries = aiJobConfig.networkMaxRetries;
 
     constructor(
         private readonly textPreprocessorService: TextPreprocessorService,
@@ -46,6 +48,7 @@ export class AiTextAnalysisService {
                 title: dto.title,
                 sourceLanguage: dto.source_language,
                 targetLanguage: dto.target_language,
+                languageLevel: dto.language_level,
                 chunkText: chunk.text,
                 chunkIndex: chunk.index,
             });
@@ -92,6 +95,7 @@ export class AiTextAnalysisService {
         title: string;
         sourceLanguage: string;
         targetLanguage: string;
+        languageLevel: string;
         chunkText: string;
         chunkIndex: number;
     }): Promise<AiAnalysisResult> {
@@ -99,6 +103,7 @@ export class AiTextAnalysisService {
             title: params.title,
             sourceLanguage: params.sourceLanguage,
             targetLanguage: params.targetLanguage,
+            languageLevel: params.languageLevel,
             originalText: params.chunkText,
         });
 
@@ -120,10 +125,11 @@ export class AiTextAnalysisService {
                 networkRetry++
             ) {
                 const networkTryNumber = networkRetry + 1;
+                const totalNetworkTries = this.maxNetworkRetries + 1;
 
                 try {
                     console.log(
-                        `[AI] Chunk ${params.chunkIndex + 1}: network try ${networkTryNumber}/${this.maxNetworkRetries + 1}`
+                        `[AI] Chunk ${params.chunkIndex + 1}: network try ${networkTryNumber}/${totalNetworkTries}`
                     );
 
                     rawResponse = await this.aiClientService.analyze(prompt);
@@ -157,9 +163,7 @@ export class AiTextAnalysisService {
                         throw new Error(
                             `AI request failed for chunk ${
                                 params.chunkIndex + 1
-                            } after ${
-                                this.maxNetworkRetries + 1
-                            } network tries: ${networkErrorMessage}`
+                            } after ${totalNetworkTries} network tries: ${networkErrorMessage}`
                         );
                     }
 
@@ -239,6 +243,11 @@ export class AiTextAnalysisService {
             normalizedMessage.includes("aborted") ||
             normalizedMessage.includes("econnrefused") ||
             normalizedMessage.includes("network") ||
+            normalizedMessage.includes("503") ||
+            normalizedMessage.includes("service unavailable") ||
+            normalizedMessage.includes("unavailable") ||
+            normalizedMessage.includes("high demand") ||
+            normalizedMessage.includes("try again later") ||
             normalizedMessage.includes("429") ||
             normalizedMessage.includes("rate limit") ||
             normalizedMessage.includes("quota") ||

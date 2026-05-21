@@ -4,6 +4,7 @@ import { AiAnalysisResult } from "../types/ai-analysis-result.type";
 import { TextChunk } from "./text-chunker.service";
 import { MaterialProcessingService } from "../../adaptive-reading-module/material-processing/material-processing.service";
 import { CreateMaterialProcessingDto } from "../../adaptive-reading-module/material-processing/dto/create-material-processing.dto";
+import { aiJobConfig } from "../config/ai-job.config";
 
 export class AiAnalysisJobWorkerService {
     private readonly intervalMs = 5000;
@@ -105,6 +106,7 @@ export class AiAnalysisJobWorkerService {
                         title: job.title,
                         sourceLanguage,
                         targetLanguage,
+                        languageLevel: job.languageLevel,
                         chunkText: chunk.text,
                         chunkIndex,
                     });
@@ -182,7 +184,39 @@ export class AiAnalysisJobWorkerService {
                 return;
             }
 
-            await this.aiAnalysisJobRepository.markFailed(job, message);
+            if (this.isTransientProviderError(message)) {
+                if (job.attemptCount >= aiJobConfig.maxAttempts) {
+                    await this.aiAnalysisJobRepository.markFailed(job, message);
+                    return;
+                }
+
+                const nextAttemptAt = this.getTransientRetryDate(
+                    job.attemptCount
+                );
+
+                console.warn(
+                    `[AI_WORKER] Job ${job.id}: provider unavailable, retry scheduled at ${nextAttemptAt.toISOString()}`
+                );
+
+                await this.aiAnalysisJobRepository.markWaitingRetry(
+                    job,
+                    message,
+                    nextAttemptAt
+                );
+
+                return;
+            }
+
+            if (job.attemptCount >= aiJobConfig.maxAttempts) {
+                await this.aiAnalysisJobRepository.markFailed(job, message);
+                return;
+            }
+
+            await this.aiAnalysisJobRepository.markWaitingRetry(
+                job,
+                message,
+                this.getTransientRetryDate(job.attemptCount)
+            );
         }
     }
 
@@ -283,5 +317,29 @@ export class AiAnalysisJobWorkerService {
         date.setHours(0, 5, 0, 0);
 
         return date;
+    }
+
+    private isTransientProviderError(message: string): boolean {
+        const normalized = message.toLowerCase();
+
+        return (
+            normalized.includes("503") ||
+            normalized.includes("service unavailable") ||
+            normalized.includes("unavailable") ||
+            normalized.includes("high demand") ||
+            normalized.includes("try again later") ||
+            normalized.includes("overloaded")
+        );
+    }
+
+    private getTransientRetryDate(attemptCount: number): Date {
+        const multiplier = Math.max(1, Math.min(attemptCount, 6));
+
+        const delayMs = Math.min(
+            aiJobConfig.transientRetryDelayMs * multiplier,
+            aiJobConfig.transientRetryMaxDelayMs
+        );
+
+        return new Date(Date.now() + delayMs);
     }
 }

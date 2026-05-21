@@ -1,17 +1,6 @@
 import { env } from "../../env";
 import { AiRateLimitService } from "./ai-rate-limit.service";
 
-type OllamaChatResponse = {
-    model?: string;
-    message?: {
-        role?: string;
-        content?: string;
-        thinking?: string;
-    };
-    done?: boolean;
-    total_duration?: number;
-};
-
 type GeminiUsageMetadata = {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
@@ -100,77 +89,12 @@ export class AiClientService {
     private readonly rateLimitService = new AiRateLimitService();
 
     async analyze(prompt: string): Promise<string> {
-        if (env.AI_PROVIDER === "gemini") {
-            return this.analyzeWithGemini(prompt);
-        }
-
-        return this.analyzeWithOllama(prompt);
-    }
-
-    private async analyzeWithOllama(prompt: string): Promise<string> {
-        console.log("[OLLAMA] Sending request...");
-        console.log("[OLLAMA] Model:", env.OLLAMA_MODEL);
-        console.log("[OLLAMA] Prompt length:", prompt.length);
-
-        const startedAt = Date.now();
-
-        const response = await fetch(`${env.OLLAMA_BASE_URL}/chat`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: env.OLLAMA_MODEL,
-                stream: false,
-                options: {
-                    temperature: 0,
-                },
-                messages: [
-                    {
-                        role: "system",
-                        content:
-                            "Return only valid JSON. Do not use markdown. Do not add explanations.",
-                    },
-                    {
-                        role: "user",
-                        content: prompt,
-                    },
-                ],
-            }),
-            signal: AbortSignal.timeout(env.OLLAMA_TIMEOUT_MS),
-        });
-
-        const finishedAt = Date.now();
-
-        console.log("[OLLAMA] Response received");
-        console.log("[OLLAMA] Status:", response.status, response.statusText);
-        console.log("[OLLAMA] Duration ms:", finishedAt - startedAt);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-
-            throw new Error(
-                `Ollama request failed: ${response.status} ${response.statusText}. ${errorText}`
-            );
-        }
-
-        const data = (await response.json()) as OllamaChatResponse;
-        const content = data.message?.content;
-
-        if (!content || typeof content !== "string") {
-            throw new Error("Ollama response content is missing");
-        }
-
-        console.log("[OLLAMA] Response content length:", content.length);
-
-        return content;
+        return this.analyzeWithGemini(prompt);
     }
 
     private async analyzeWithGemini(prompt: string): Promise<string> {
         if (!env.GEMINI_API_KEY) {
-            throw new Error(
-                "GEMINI_API_KEY is required when AI_PROVIDER=gemini"
-            );
+            throw new Error("GEMINI_API_KEY is required");
         }
 
         const estimatedPromptTokens = Math.ceil(prompt.length / 4);
@@ -258,9 +182,5 @@ export class AiClientService {
         console.log("[GEMINI] Response content length:", content.length);
 
         return content;
-    }
-
-    resetAttempts(): void {
-        // nothing to reset
     }
 }

@@ -15,16 +15,27 @@ const envSchema = z.object({
     POSTGRES_PASSWORD: z.string().min(1),
     POSTGRES_DB: z.string().min(1),
 
-    AI_PROVIDER: z.enum(["ollama", "gemini"]).default("ollama"),
     AI_CHUNK_MAX_ESTIMATED_TOKENS: z.coerce
         .number()
         .int()
         .positive()
-        .default(2500),
+        .default(250000),
 
-    OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434/api"),
-    OLLAMA_MODEL: z.string().min(1).default("gpt-oss:20b"),
-    OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(420000),
+    AI_JOB_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+    AI_VALIDATION_MAX_ATTEMPTS: z.coerce.number().int().positive().default(9),
+    AI_NETWORK_MAX_RETRIES: z.coerce.number().int().min(0).default(3),
+
+    AI_TRANSIENT_RETRY_DELAY_MS: z.coerce
+        .number()
+        .int()
+        .positive()
+        .default(5 * 60 * 1000),
+
+    AI_TRANSIENT_RETRY_MAX_DELAY_MS: z.coerce
+        .number()
+        .int()
+        .positive()
+        .default(30 * 60 * 1000),
 
     GEMINI_API_KEY: z.string().optional().default(""),
     GEMINI_MODEL: z.string().min(1).default("gemini-2.5-flash"),
