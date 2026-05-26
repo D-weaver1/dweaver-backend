@@ -26,10 +26,12 @@ router.get("/", authMiddleware, async (req, res: AuthResponse) => {
             dictionaries.map((d) => ({
                 id: d.id,
                 source: {
+                    id: d.languagePair.sourceLanguage.id,
                     name: d.languagePair.sourceLanguage.name,
                     code: d.languagePair.sourceLanguage.code,
                 },
                 target: {
+                    id: d.languagePair.targetLanguage.id,
                     name: d.languagePair.targetLanguage.name,
                     code: d.languagePair.targetLanguage.code,
                 },

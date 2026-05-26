@@ -8,7 +8,7 @@ import {
     QuizAttempt,
     Word,
 } from "../entities";
-import { In } from "typeorm";
+import { In, IsNull } from "typeorm";
 import { QuestionType } from "../entities/Question.entity";
 import { AuthResponse } from "../adaptive-reading-module/auth/types/auth-request.type";
 import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth.middleware";
@@ -16,6 +16,7 @@ import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth
 const quizRepo = db.getRepository(Quiz);
 const quizAttemptRepo = db.getRepository(QuizAttempt);
 const quizAnswerRepo = db.getRepository(QuizAnswer);
+const questionRepo = db.getRepository(Question);
 const wordRepo = db.getRepository(Word);
 const languageTextTemplateRepo = db.getRepository(LanguageTextTemplate);
 const router = Router();
@@ -61,16 +62,21 @@ router.get("/", async (req, res: AuthResponse) => {
         res.json(
             quizzes.map((quiz) => ({
                 id: quiz.id,
-                attempts: quiz.quizAttempts.map((attempt) => ({
-                    id: attempt.id,
-                    completedAt: attempt.completedAt,
-                    createdAt: attempt.createdAt,
-                    correct: attempt.quizAnswers.filter((a) => a.isCorrect)
-                        .length,
-                    total: quiz.questions.length,
-                })),
+                attempts: quiz.quizAttempts
+                    .map((attempt) => ({
+                        id: attempt.id,
+                        completedAt: attempt.completedAt,
+                        createdAt: attempt.createdAt,
+                        correct: attempt.quizAnswers.filter((a) => a.isCorrect)
+                            .length,
+                        total: quiz.questions.length,
+                    }))
+                    .sort(
+                        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+                    ),
                 sourceLanguage: quiz.dictionary.languagePair.sourceLanguage,
                 targetLanguage: quiz.dictionary.languagePair.targetLanguage,
+                total: quiz.questions.length,
             }))
         );
     } catch (error) {
@@ -105,12 +111,18 @@ router.get("/:id", async (req, res: AuthResponse) => {
                 },
             },
         });
+        const attempt = await quizAttemptRepo.findOne({
+            where: { quiz: { id: quizId }, completedAt: IsNull() },
+        });
         const words = await wordRepo.find({
             where: { languagePair: { id: quiz?.dictionary.languagePair.id } },
         });
-        const answers = await quizAnswerRepo.find({
-            where: { quizAttempt: { quiz: { id: quizId } } },
-        });
+        const answers = attempt
+            ? await quizAnswerRepo.find({
+                  where: { quizAttempt: { id: attempt.id } },
+                  relations: { question: true },
+              })
+            : [];
         const templateIds = quiz?.questions.map((q) => q.textTemplate.id) || [];
         const templates = await languageTextTemplateRepo.find({
             where: {
@@ -160,6 +172,41 @@ router.get("/:id", async (req, res: AuthResponse) => {
             return options;
         };
 
+        const questionsRaw = quiz.questions.map((q) => {
+            const template =
+                templates.find((t) => t.textTemplate.id === q.textTemplate.id)
+                    ?.template ??
+                templates[0]?.template ??
+                "";
+            const word =
+                q.type === QuestionType.SourceToTargetTranslate
+                    ? q.dictionaryWord?.word.sourceText
+                    : q.dictionaryWord?.word.translation;
+            const text = applyTemplate(template, {
+                sourceLanguage,
+                targetLanguage,
+                word: word ?? "",
+            });
+            const answer = answers.find((a) => a.question.id === q.id);
+            const answered = !!answer;
+
+            return {
+                id: q.id,
+                type: q.type,
+                text,
+                answered,
+                isCorrect: answered ? answer?.isCorrect : undefined,
+                options: getOptions(q, answered),
+            };
+        });
+
+        const answered = questionsRaw.filter((q) => q.answered);
+        const notAnswered = questionsRaw.filter((q) => !q.answered);
+        const questions = [
+            ...answered,
+            ...notAnswered.sort(() => Math.random() - 0.5),
+        ];
+
         res.json({
             id: quiz.id,
             sourceLanguage: {
@@ -170,34 +217,7 @@ router.get("/:id", async (req, res: AuthResponse) => {
                 name: quiz.dictionary.languagePair.targetLanguage.name,
                 code: quiz.dictionary.languagePair.targetLanguage.code,
             },
-            questions: quiz.questions.map((q) => {
-                const template =
-                    templates.find(
-                        (t) => t.textTemplate.id === q.textTemplate.id
-                    )?.template ??
-                    templates[0]?.template ??
-                    "";
-                const word =
-                    q.type === QuestionType.SourceToTargetTranslate
-                        ? q.dictionaryWord?.word.translation
-                        : q.dictionaryWord?.word.sourceText;
-                const text = applyTemplate(template, {
-                    sourceLanguage,
-                    targetLanguage,
-                    word: word ?? "",
-                });
-                const answer = answers.find((a) => a.question.id === q.id);
-                const answered = !!answer;
-
-                return {
-                    id: q.id,
-                    type: q.type,
-                    text,
-                    answered,
-                    isCorrect: answered ? answer?.isCorrect : undefined,
-                    options: getOptions(q, answered),
-                };
-            }),
+            questions,
         });
     } catch (error) {
         console.error("Error fetching quiz:", error);
@@ -217,14 +237,20 @@ router.post("/:id/:questionId/answer", async (req, res) => {
 
         const quiz = await quizRepo.findOne({
             where: { id: quizId },
-            relations: { questions: true },
         });
 
         if (!quiz) {
             return res.status(404).json({ error: "Quiz not found" });
         }
 
-        const question = quiz.questions.find((q) => q.id === questionId);
+        const question = await questionRepo.findOne({
+            where: { id: questionId, quiz: { id: quizId } },
+            relations: {
+                dictionaryWord: {
+                    word: true,
+                },
+            },
+        });
 
         if (!question) {
             return res
