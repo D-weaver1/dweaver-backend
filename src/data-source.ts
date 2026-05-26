@@ -16,6 +16,14 @@ import {
     AiAnalysisJobPayload,
 } from "./entities";
 import { env } from "./env";
+import { Dictionary } from "./entities/Dictionary.entity";
+import { DictionaryWord } from "./entities/DictionaryWord.entity";
+import { LanguageTextTemplate } from "./entities/LanguageTextTemplate.entity";
+import { Question } from "./entities/Question.entity";
+import { Quiz } from "./entities/Quiz.entity";
+import { QuizAnswer } from "./entities/QuizAnswer.entity";
+import { QuizAttempt } from "./entities/QuizAttempt.entity";
+import { TextTemplate } from "./entities/TextTemplate.entity";
 
 const db = new DataSource({
     type: "postgres",
@@ -38,6 +46,14 @@ const db = new DataSource({
         RefreshToken,
         AiAnalysisJob,
         AiAnalysisJobPayload,
+        Dictionary,
+        DictionaryWord,
+        LanguageTextTemplate,
+        Question,
+        Quiz,
+        QuizAnswer,
+        QuizAttempt,
+        TextTemplate,
     ],
     migrations: [path.resolve(__dirname, "migrations/*")],
     synchronize: false,

@@ -26,6 +26,10 @@ export function authMiddleware(
     try {
         const payload = verifyAccessToken(token);
 
+        res.locals.user = {
+            id: payload.sub,
+            role: payload.role,
+        };
         req.user = {
             id: payload.sub,
             role: payload.role,

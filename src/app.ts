@@ -1,16 +1,16 @@
 import express from "express";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import materialProcessingRoutes from "./adaptive-reading-module/material-processing/material-processing.routes";
 import userLanguagePairRoutes from "./adaptive-reading-module/user-language-pairs/user-language-pair.routes";
 import authRoutes from "./adaptive-reading-module/auth/auth.routes";
-import cookieParser from "cookie-parser";
-import cors from "cors";
 import materialRoutes from "./adaptive-reading-module/materials/material.routes";
-
 import languageRoutes from "./management-module/language/language.routes";
 import languagePairRoutes from "./management-module/language-pair/language-pair.routes";
 import aiTextAnalysisRoutes from "./ai-text-analysis-module/ai-text-analysis.routes";
 import materialLevelRoutes from "./adaptive-reading-module/material-level/material-level.routes";
 import ttsRoutes from "./adaptive-reading-module/tts/tts.routes";
+import { dictionaryRoutes, quizzesRoutes } from "./dictionary-module";
 
 const app = express();
 
@@ -41,6 +41,10 @@ app.use("/language-pairs", languagePairRoutes);
 app.use("/ai-text-analysis", aiTextAnalysisRoutes);
 
 app.use("/tts", ttsRoutes);
+
+app.use("/quizzes", quizzesRoutes);
+
+app.use("/dictionaries", dictionaryRoutes);
 
 app.get("/health", (_req, res) => {
     res.status(200).json({
