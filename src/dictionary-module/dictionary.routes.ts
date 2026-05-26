@@ -2,10 +2,12 @@ import { Router } from "express";
 import { AuthResponse } from "../adaptive-reading-module/auth/types/auth-request.type";
 import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth.middleware";
 import db from "../data-source";
-import { Dictionary } from "../entities";
+import { Dictionary, DictionaryWord, Word } from "../entities";
 import { QuizService } from "./services";
 
 const dictionaryRepo = db.getRepository(Dictionary);
+const dictionaryWordRepo = db.getRepository(DictionaryWord);
+const wordRepo = db.getRepository(Word);
 const router = Router();
 
 router.get("/", authMiddleware, async (req, res: AuthResponse) => {
@@ -81,5 +83,71 @@ router.post(
         }
     }
 );
+
+router.post("/add-word", authMiddleware, async (req, res: AuthResponse) => {
+    const user = res.locals.user;
+    const { wordId, languagePairId } = req.body;
+
+    if (!languagePairId || !wordId) {
+        return res
+            .status(400)
+            .json({ error: "Invalid dictionary ID or word ID" });
+    }
+
+    const existing = await dictionaryWordRepo.findOne({
+        where: {
+            dictionary: {
+                languagePair: { id: languagePairId },
+                user: { id: user.id },
+            },
+            word: { id: wordId },
+        },
+    });
+
+    if (existing) {
+        return res
+            .status(409)
+            .json({ error: "Word already exists in the dictionary" });
+    }
+
+    const word = await wordRepo.findOne({
+        where: { id: wordId },
+        relations: {
+            languagePair: true,
+        },
+    });
+    const dictionary = await dictionaryRepo.findOne({
+        where: { languagePair: { id: languagePairId }, user: { id: user.id } },
+        relations: {
+            user: true,
+            languagePair: true,
+        },
+    });
+
+    if (!word || !dictionary) {
+        return res.status(404).json({ error: "Word or dictionary not found" });
+    }
+
+    dictionaryWordRepo.create({
+        dictionary,
+        word,
+    });
+
+    try {
+        await dictionaryWordRepo.save(
+            dictionaryWordRepo.create({
+                dictionary,
+                word,
+            })
+        );
+
+        return res.status(201).json({ message: "Word added to dictionary" });
+    } catch (error) {
+        console.error("Error adding word to dictionary:", error);
+        return res
+            .status(500)
+            .json({ error: "Failed to add word to dictionary" });
+    }
+});
 
 export default router;

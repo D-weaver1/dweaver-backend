@@ -5,11 +5,13 @@ import { User } from "../../entities/User.entity";
 import { UserLanguagePair } from "../../entities/UserLanguagePair.entity";
 import { UserLanguagePairStatus } from "../../entities/enums";
 import { AddUserLanguagePairDto } from "./dto/add-user-language-pair.dto";
+import { Dictionary } from "../../entities";
 
 export class UserLanguagePairService {
     private userRepository = db.getRepository(User);
     private languagePairRepository = db.getRepository(LanguagePair);
     private userLanguagePairRepository = db.getRepository(UserLanguagePair);
+    private dictionaryRepository = db.getRepository(Dictionary);
 
     private buildUserLanguagePairResponse(userLanguagePair: UserLanguagePair) {
         return {
@@ -143,8 +145,15 @@ export class UserLanguagePairService {
             status: UserLanguagePairStatus.ACTIVE,
             lastUsed: activePairsCount === 0 ? new Date() : null,
         });
+        const dictionary = this.dictionaryRepository.create({
+            languagePair,
+            user,
+        });
 
-        await this.userLanguagePairRepository.save(userLanguagePair);
+        await Promise.all([
+            this.userLanguagePairRepository.save(userLanguagePair),
+            this.dictionaryRepository.save(dictionary),
+        ]);
 
         return this.getState(userId);
     }

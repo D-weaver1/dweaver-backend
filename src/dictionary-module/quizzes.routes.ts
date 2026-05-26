@@ -152,7 +152,9 @@ router.get("/:id", async (req, res: AuthResponse) => {
                 question.type === QuestionType.SourceToTargetTranslate
                     ? question.dictionaryWord?.word.translation
                     : question.dictionaryWord?.word.sourceText;
-            const src = words.slice();
+            const src = words
+                .slice()
+                .filter((w) => w.id !== question.dictionaryWord?.word.id);
             const options = Array.from({ length: 5 }, () => {
                 const randomWord = src.splice(
                     Math.floor(Math.random() * src.length),
@@ -259,14 +261,10 @@ router.post("/:id/:questionId/answer", async (req, res) => {
         }
 
         const quizAttempt =
-            (await quizAttemptRepo.findOneBy({ quiz: { id: quizId } })) ||
-            quizAttemptRepo.create({ quiz });
-
-        if (quizAttempt.completedAt) {
-            return res
-                .status(400)
-                .json({ error: "Quiz attempt already completed" });
-        }
+            (await quizAttemptRepo.findOneBy({
+                quiz: { id: quizId },
+                completedAt: IsNull(),
+            })) || quizAttemptRepo.create({ quiz });
 
         if (!quizAttempt.id) {
             await quizAttemptRepo.save(quizAttempt);
