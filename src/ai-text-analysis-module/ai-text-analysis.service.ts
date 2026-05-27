@@ -99,13 +99,15 @@ export class AiTextAnalysisService {
         chunkText: string;
         chunkIndex: number;
     }): Promise<AiAnalysisResult> {
-        let prompt = this.promptBuilderService.build({
+        const originalPrompt = this.promptBuilderService.build({
             title: params.title,
             sourceLanguage: params.sourceLanguage,
             targetLanguage: params.targetLanguage,
             languageLevel: params.languageLevel,
             originalText: params.chunkText,
         });
+
+        let prompt = originalPrompt;
 
         for (
             let validationAttempt = 1;
@@ -216,8 +218,9 @@ export class AiTextAnalysisService {
                 }
 
                 prompt = this.promptBuilderService.buildRetryPrompt({
-                    previousPrompt: prompt,
+                    originalPrompt,
                     validationError: validationErrorMessage,
+                    previousResponse: rawResponse,
                 });
             }
         }
