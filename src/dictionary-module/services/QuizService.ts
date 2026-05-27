@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { In, Not, Repository } from "typeorm";
 import db from "../../data-source";
 import {
     Dictionary,
@@ -112,7 +112,10 @@ export class QuizService {
 
     getSourceWords = async () => {
         const words = await this.dictionaryWordRepo.find({
-            where: { dictionary: { id: this.dictionary.id } },
+            where: {
+                dictionary: { id: this.dictionary.id },
+                word: { sourceText: Not(In([".", ",", "!", "?", ":", ";"])) },
+            },
             relations: { word: true },
             take: this.QUIZ_LENGTH,
         });

@@ -45,6 +45,57 @@ router.get("/", authMiddleware, async (req, res: AuthResponse) => {
     }
 });
 
+router.get(
+    "/:languagePairId/words",
+    authMiddleware,
+    async (req, res: AuthResponse) => {
+        const user = res.locals.user;
+        const languagePairId = req.params.languagePairId;
+
+        if (!languagePairId) {
+            return res.status(400).json({ error: "Invalid dictionary ID" });
+        }
+
+        const dictionary = await dictionaryRepo.findOne({
+            where: {
+                languagePair: { id: languagePairId },
+                user: { id: user.id },
+            },
+            relations: {
+                user: true,
+            },
+        });
+
+        if (!dictionary) {
+            return res.status(404).json({ error: "Dictionary not found" });
+        }
+
+        if (dictionary.user.id !== user.id) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        try {
+            const dictionaryWords = await dictionaryWordRepo.find({
+                where: { dictionary: { id: dictionary.id } },
+                relations: { word: true },
+            });
+
+            return res.json(
+                dictionaryWords.map((dw) => ({
+                    id: dw.word.id,
+                    sourceText: dw.word.sourceText,
+                    translation: dw.word.translation,
+                }))
+            );
+        } catch (error) {
+            console.error("Error fetching dictionary words:", error);
+            return res
+                .status(500)
+                .json({ error: "Failed to fetch dictionary words" });
+        }
+    }
+);
+
 router.post(
     "/:id/generate-quiz",
     authMiddleware,

@@ -8,7 +8,7 @@ import {
     QuizAttempt,
     Word,
 } from "../entities";
-import { In, IsNull } from "typeorm";
+import { In, IsNull, Not } from "typeorm";
 import { QuestionType } from "../entities/Question.entity";
 import { AuthResponse } from "../adaptive-reading-module/auth/types/auth-request.type";
 import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth.middleware";
@@ -115,7 +115,10 @@ router.get("/:id", async (req, res: AuthResponse) => {
             where: { quiz: { id: quizId }, completedAt: IsNull() },
         });
         const words = await wordRepo.find({
-            where: { languagePair: { id: quiz?.dictionary.languagePair.id } },
+            where: {
+                languagePair: { id: quiz?.dictionary.languagePair.id },
+                sourceText: Not(In([".", ",", "!", "?", ":", ";"])),
+            },
         });
         const answers = attempt
             ? await quizAnswerRepo.find({
@@ -297,7 +300,7 @@ router.post("/:id/complete", async (req, res) => {
         }
 
         const quizAttempt = await quizAttemptRepo.findOne({
-            where: { quiz: { id: quizId } },
+            where: { quiz: { id: quizId }, completedAt: IsNull() },
         });
 
         if (!quizAttempt) {
