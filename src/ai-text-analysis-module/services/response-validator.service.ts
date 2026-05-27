@@ -2,6 +2,21 @@ import { AiAnalysisResult, AiPair } from "../types/ai-analysis-result.type";
 
 const PARAGRAPH_BREAK_UNIT = "\n\n";
 
+const PUNCTUATION_UNITS = new Set([
+    ".",
+    ",",
+    "!",
+    "?",
+    ":",
+    ";",
+    "…",
+    "—",
+    "(",
+    ")",
+    "«",
+    "»",
+]);
+
 export class ResponseValidatorService {
     validate(data: unknown): AiAnalysisResult {
         if (!this.isObject(data)) {
@@ -73,9 +88,9 @@ export class ResponseValidatorService {
             const normalizedSourceText = source_text.trim();
             const normalizedTargetText = target_text.trim();
 
-            if (this.isParagraphBreak(normalizedSourceText)) {
+            if (this.isStructuralUnit(normalizedSourceText)) {
                 throw new Error(
-                    `Pair at index ${pairIndex} must not use paragraph break as source_text`
+                    `Pair at index ${pairIndex} must not use punctuation or paragraph break as source_text`
                 );
             }
 
@@ -111,9 +126,9 @@ export class ResponseValidatorService {
             for (const index of uniqueIndexes) {
                 const unitAtIndex = normalizedTextUnits[index];
 
-                if (this.isParagraphBreak(unitAtIndex)) {
+                if (this.isStructuralUnit(unitAtIndex)) {
                     throw new Error(
-                        `Pair at index ${pairIndex} points to paragraph break at position ${index}`
+                        `Pair at index ${pairIndex} points to punctuation or paragraph break at position ${index}`
                     );
                 }
 
@@ -157,19 +172,22 @@ export class ResponseValidatorService {
         return normalizedUnit;
     }
 
+    private isStructuralUnit(value: string): boolean {
+        return this.isParagraphBreak(value) || this.isPunctuation(value);
+    }
+
     private isParagraphBreak(value: string): boolean {
         return value === PARAGRAPH_BREAK_UNIT || value.trim() === "\\n\\n";
+    }
+
+    private isPunctuation(value: string): boolean {
+        return PUNCTUATION_UNITS.has(value.trim());
     }
 
     private looksLikeSentence(value: string): boolean {
         const trimmed = value.trim();
 
-        if (
-            trimmed === "." ||
-            trimmed === "," ||
-            trimmed === "!" ||
-            trimmed === "?"
-        ) {
+        if (this.isPunctuation(trimmed)) {
             return false;
         }
 
