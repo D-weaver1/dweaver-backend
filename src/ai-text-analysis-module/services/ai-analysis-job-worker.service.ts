@@ -158,13 +158,14 @@ export class AiAnalysisJobWorkerService {
                 );
 
             console.log(
-                `[AI_WORKER] Job ${job.id}: material-processing completed`
+                `[AI_WORKER] Job ${job.id}: material-processing completed`,
+                materialProcessingResult
             );
 
-            await this.aiAnalysisJobRepository.markCompleted(job, {
-                sent_to_material_processing: true,
-                material_processing_result: materialProcessingResult,
-            });
+            await this.aiAnalysisJobRepository.markCompleted(
+                job,
+                resultForSecondModule
+            );
 
             await this.aiAnalysisJobRepository.deletePayloadByJobId(job.id);
 

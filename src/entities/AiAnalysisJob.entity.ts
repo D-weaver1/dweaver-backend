@@ -54,8 +54,6 @@ export class AiAnalysisJob {
     @Column({ type: "timestamp", nullable: true, name: "next_attempt_at" })
     nextAttemptAt!: Date | null;
 
-    // Тимчасове поле для перевірки роботи модуля.
-    // Після інтеграції з другим модулем результат буде передаватися напряму.
     @Column({ type: "jsonb", nullable: true, name: "result_json" })
     resultJson!: unknown | null;
 
