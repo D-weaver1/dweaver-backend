@@ -165,7 +165,8 @@ export class AiTextAnalysisService {
                         throw new Error(
                             `AI request failed for chunk ${
                                 params.chunkIndex + 1
-                            } after ${totalNetworkTries} network tries: ${networkErrorMessage}`
+                            } after ${totalNetworkTries} network tries: ${networkErrorMessage}`,
+                            { cause: error }
                         );
                     }
 
@@ -213,7 +214,8 @@ export class AiTextAnalysisService {
                             params.chunkIndex + 1
                         } after ${
                             this.maxValidationAttempts
-                        } validation attempts: ${validationErrorMessage}`
+                        } validation attempts: ${validationErrorMessage}`,
+                        { cause: error }
                     );
                 }
 
