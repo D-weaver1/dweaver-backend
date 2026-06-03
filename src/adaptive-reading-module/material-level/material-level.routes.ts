@@ -4,12 +4,17 @@ import { authMiddleware } from "../auth/middlewares/auth.middleware";
 import { MaterialLevelController } from "./material-level.controller";
 import { MaterialLevelService } from "./material-level.service";
 import { MaterialLevelRepository } from "./repositories/material-level.repository";
+import { Dictionary } from "../../entities";
 
 const router = Router();
 
 const materialLevelRepository = new MaterialLevelRepository(db);
+const dictionaryRepository = db.getRepository(Dictionary);
 
-const materialLevelService = new MaterialLevelService(materialLevelRepository);
+const materialLevelService = new MaterialLevelService(
+    materialLevelRepository,
+    dictionaryRepository
+);
 
 const materialLevelController = new MaterialLevelController(
     materialLevelService

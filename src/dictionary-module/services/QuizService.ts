@@ -3,6 +3,7 @@ import db from "../../data-source";
 import {
     Dictionary,
     DictionaryWord,
+    MaterialLevel,
     Question,
     Quiz,
     TextTemplate,
@@ -16,14 +17,19 @@ export class QuizService {
     private readonly quizRepo: Repository<Quiz>;
     private readonly questionRepo: Repository<Question>;
     private readonly textTemplateRepo: Repository<TextTemplate>;
+    private readonly materialLevelRepo: Repository<MaterialLevel>;
 
     private textTemplatesCache: Record<QuestionType, TextTemplate[]>;
 
-    constructor(private readonly dictionary: Dictionary) {
+    constructor(
+        private readonly dictionary: Dictionary,
+        private readonly materialLevelId: string | null = null
+    ) {
         this.dictionaryWordRepo = db.getRepository(DictionaryWord);
         this.questionRepo = db.getRepository(Question);
         this.quizRepo = db.getRepository(Quiz);
         this.textTemplateRepo = db.getRepository(TextTemplate);
+        this.materialLevelRepo = db.getRepository(MaterialLevel);
         this.textTemplatesCache = {
             [QuestionType.SourceSynonym]: [],
             [QuestionType.TargetSynonym]: [],
@@ -46,7 +52,11 @@ export class QuizService {
         const S2T_TRANSLATE = 7;
         const T2S_TRANSLATE = 7;
 
-        const quiz = this.quizRepo.create({ dictionary: this.dictionary });
+        const name = await this.getTitle();
+        const quiz = this.quizRepo.create({
+            dictionary: this.dictionary,
+            title: name,
+        });
         await this.quizRepo.save(quiz);
 
         const questions: Question[] = [];
@@ -110,8 +120,27 @@ export class QuizService {
         return quiz;
     };
 
+    getTitle = async () => {
+        const materialLevel = this.materialLevelId
+            ? await this.materialLevelRepo.findOne({
+                  where: { id: this.materialLevelId },
+                  relations: { material: true },
+              })
+            : null;
+
+        if (!materialLevel) {
+            const lz = (num: number) => num.toString().padStart(2, "0");
+
+            const date = new Date();
+
+            return `Quiz ${date.getFullYear()}-${lz(date.getMonth() + 1)}-${lz(date.getDate())} ${lz(date.getHours())}:${lz(date.getMinutes())}`;
+        }
+
+        return `Quiz for ${materialLevel.material.title} - Level ${materialLevel.factor}`;
+    };
+
     getSourceWords = async () => {
-        const words = await this.dictionaryWordRepo.find({
+        let words = await this.dictionaryWordRepo.find({
             where: {
                 dictionary: { id: this.dictionary.id },
                 word: { sourceText: Not(In([".", ",", "!", "?", ":", ";"])) },
@@ -119,8 +148,35 @@ export class QuizService {
             relations: { word: true },
             take: this.QUIZ_LENGTH,
         });
+        const filterIds = await this.getFilterWordIds();
+
+        if (filterIds.length > 0) {
+            words = words.filter((dw) => filterIds.includes(dw.word.id));
+        }
 
         return words.sort(() => Math.random() - 0.5);
+    };
+
+    getFilterWordIds = async () => {
+        if (!this.materialLevelId) {
+            return [];
+        }
+
+        const materialLevel = await this.materialLevelRepo.findOne({
+            where: { id: this.materialLevelId },
+            relations: { material: { languagePair: true } },
+        });
+
+        if (!materialLevel) {
+            return [];
+        }
+
+        const result = await db.query(
+            "SELECT w.id FROM words AS w INNER JOIN material_words AS mw ON mw.word_id = w.id INNER JOIN material_level_material_words AS mlmw ON mlmw.material_word_id = mw.id WHERE mlmw.material_level_id = $1",
+            [this.materialLevelId]
+        );
+
+        return result.map((row: { id: string }) => row.id);
     };
 
     getTextTemplate = async (type: QuestionType) => {

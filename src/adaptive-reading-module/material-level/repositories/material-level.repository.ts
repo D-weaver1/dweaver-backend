@@ -50,6 +50,11 @@ export class MaterialLevelRepository {
                     id: materialId,
                 },
             },
+            relations: {
+                material: {
+                    languagePair: true,
+                },
+            },
         });
     }
 

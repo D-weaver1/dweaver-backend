@@ -62,6 +62,7 @@ router.get("/", async (req, res: AuthResponse) => {
         res.json(
             quizzes.map((quiz) => ({
                 id: quiz.id,
+                title: quiz.title,
                 attempts: quiz.quizAttempts
                     .map((attempt) => ({
                         id: attempt.id,

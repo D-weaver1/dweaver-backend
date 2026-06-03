@@ -1,5 +1,8 @@
 import { MaterialLevelRepository } from "./repositories/material-level.repository";
 import { UserMaterialStatus } from "../../entities/enums";
+import { Repository } from "typeorm";
+import { Dictionary } from "../../entities";
+import { QuizService } from "../../dictionary-module/services";
 type ReadingUnit = {
     index: number;
     text: string;
@@ -13,7 +16,8 @@ type ReadingUnit = {
 
 export class MaterialLevelService {
     constructor(
-        private readonly materialLevelRepository: MaterialLevelRepository
+        private readonly materialLevelRepository: MaterialLevelRepository,
+        private readonly dictionaryRepository: Repository<Dictionary>
     ) {}
 
     async getMaterialLevels(materialId: string, userId: string) {
@@ -230,6 +234,26 @@ export class MaterialLevelService {
                 levelId,
                 UserMaterialStatus.COMPLETED
             );
+
+        const dictionary = await this.dictionaryRepository.findOne({
+            where: {
+                user: { id: userId },
+                languagePair: { id: materialLevel.material.languagePair.id },
+            },
+        });
+
+        if (dictionary) {
+            const quizService = new QuizService(dictionary, materialLevel.id);
+
+            try {
+                await quizService.generate();
+            } catch (error) {
+                console.warn(
+                    `Failed to auto-generate quiz for material level ${levelId}:`,
+                    error
+                );
+            }
+        }
 
         return {
             materialId,

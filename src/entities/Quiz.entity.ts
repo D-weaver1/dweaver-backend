@@ -1,4 +1,5 @@
 import {
+    Column,
     Entity,
     JoinColumn,
     ManyToOne,
@@ -13,6 +14,9 @@ import { Question } from "./Question.entity";
 export class Quiz {
     @PrimaryGeneratedColumn("uuid")
     id!: string;
+
+    @Column({ type: "text", nullable: true })
+    title!: string | null;
 
     @ManyToOne(() => Dictionary, { nullable: false })
     @JoinColumn({ name: "dictionary_id" })

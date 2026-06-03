@@ -4,6 +4,7 @@ import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth
 import db from "../data-source";
 import { Dictionary, DictionaryWord, Word } from "../entities";
 import { QuizService } from "./services";
+import PdfGenerator from "./services/PdfGenerator";
 
 const dictionaryRepo = db.getRepository(Dictionary);
 const dictionaryWordRepo = db.getRepository(DictionaryWord);
@@ -87,6 +88,89 @@ router.get(
                     translation: dw.word.translation,
                 }))
             );
+        } catch (error) {
+            console.error("Error fetching dictionary words:", error);
+            return res
+                .status(500)
+                .json({ error: "Failed to fetch dictionary words" });
+        }
+    }
+);
+
+router.post(
+    "/:languagePairId/export-pdf",
+    authMiddleware,
+    async (req, res: AuthResponse) => {
+        const user = res.locals.user;
+        const languagePairId = req.params.languagePairId;
+        const mode = (req.query.mode as string) || "s_t";
+        const query = (req.query.query ? String(req.query.query) : "")
+            .trim()
+            .toLowerCase();
+
+        if (!languagePairId) {
+            return res.status(400).json({ error: "Invalid dictionary ID" });
+        }
+
+        const dictionary = await dictionaryRepo.findOne({
+            where: {
+                languagePair: { id: languagePairId },
+                user: { id: user.id },
+            },
+            relations: {
+                user: true,
+                languagePair: {
+                    sourceLanguage: true,
+                    targetLanguage: true,
+                },
+            },
+        });
+
+        if (!dictionary) {
+            return res.status(404).json({ error: "Dictionary not found" });
+        }
+
+        if (dictionary.user.id !== user.id) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        try {
+            const dictionaryWords = await dictionaryWordRepo.find({
+                where: { dictionary: { id: dictionary.id } },
+                relations: { word: true },
+            });
+            const filtered = query
+                ? dictionaryWords.filter(
+                      (dw) =>
+                          dw.word.sourceText.toLowerCase().includes(query) ||
+                          dw.word.translation.toLowerCase().includes(query)
+                  )
+                : dictionaryWords;
+            const key = mode === "s_t" ? "sourceText" : "translation";
+
+            filtered.sort((a, b) => a.word[key].localeCompare(b.word[key]));
+
+            const srcLang = dictionary.languagePair.sourceLanguage.code;
+            const tgtLang = dictionary.languagePair.targetLanguage.code;
+            const generator = new PdfGenerator(
+                filtered,
+                srcLang,
+                tgtLang,
+                mode as "s_t" | "t_s"
+            );
+            const pdfBuffer = await generator.generate();
+            const name =
+                mode === "s_t"
+                    ? `${srcLang}_${tgtLang}`
+                    : `${tgtLang}_${srcLang}`;
+
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader(
+                "Content-Disposition",
+                `attachment; filename="dictionary_${name}.pdf"`
+            );
+
+            return res.end(pdfBuffer);
         } catch (error) {
             console.error("Error fetching dictionary words:", error);
             return res
