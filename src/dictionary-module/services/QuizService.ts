@@ -11,6 +11,7 @@ import {
 import { QuestionType } from "../../entities/Question.entity";
 
 export class QuizService {
+    private readonly QUIZ_SHORT_LENGTH = 6;
     private readonly QUIZ_LENGTH = 14;
 
     private readonly dictionaryWordRepo: Repository<DictionaryWord>;
@@ -40,8 +41,9 @@ export class QuizService {
 
     generate = async () => {
         const words = await this.getSourceWords();
+        const length = this.getQuizLength();
 
-        if (words.length < this.QUIZ_LENGTH) {
+        if (words.length < length) {
             throw new Error(
                 "Not enough words in the dictionary to generate a quiz"
             );
@@ -49,8 +51,8 @@ export class QuizService {
 
         const SYNONYM_SRC = 0;
         const SYNONYM_TGT = 0;
-        const S2T_TRANSLATE = 7;
-        const T2S_TRANSLATE = 7;
+        const S2T_TRANSLATE = length / 2;
+        const T2S_TRANSLATE = length / 2;
 
         const name = await this.getTitle();
         const quiz = this.quizRepo.create({
@@ -146,7 +148,6 @@ export class QuizService {
                 word: { sourceText: Not(In([".", ",", "!", "?", ":", ";"])) },
             },
             relations: { word: true },
-            take: this.QUIZ_LENGTH,
         });
         const filterIds = await this.getFilterWordIds();
 
@@ -156,6 +157,9 @@ export class QuizService {
 
         return words.sort(() => Math.random() - 0.5);
     };
+
+    getQuizLength = () =>
+        this.materialLevelId ? this.QUIZ_SHORT_LENGTH : this.QUIZ_LENGTH;
 
     getFilterWordIds = async () => {
         if (!this.materialLevelId) {
