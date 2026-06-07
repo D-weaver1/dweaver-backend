@@ -10,7 +10,11 @@ import languagePairRoutes from "./management-module/language-pair/language-pair.
 import aiTextAnalysisRoutes from "./ai-text-analysis-module/ai-text-analysis.routes";
 import materialLevelRoutes from "./adaptive-reading-module/material-level/material-level.routes";
 import ttsRoutes from "./adaptive-reading-module/tts/tts.routes";
-import { dictionaryRoutes, quizzesRoutes } from "./dictionary-module";
+import {
+    dictionaryRoutes,
+    quizzesRoutes,
+    templatesRoutes,
+} from "./dictionary-module";
 
 const app = express();
 
@@ -45,6 +49,8 @@ app.use("/tts", ttsRoutes);
 app.use("/quizzes", quizzesRoutes);
 
 app.use("/dictionaries", dictionaryRoutes);
+
+app.use("/templates", templatesRoutes);
 
 app.get("/health", (_req, res) => {
     res.status(200).json({

@@ -12,8 +12,7 @@ import { DictionaryWord } from "./DictionaryWord.entity";
 export enum QuestionType {
     SourceToTargetTranslate = "s2t_translate",
     TargetToSourceTranslate = "t2s_translate",
-    SourceSynonym = "s_synonym",
-    TargetSynonym = "t_synonym",
+    SourceToTargetInput = "s2t_input",
 }
 
 @Entity({ name: "questions" })

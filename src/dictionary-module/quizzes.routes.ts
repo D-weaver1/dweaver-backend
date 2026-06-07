@@ -28,6 +28,14 @@ const checkAnswer = (question: Question, answer: string) => {
         return word?.translation.toLowerCase() === answer.toLowerCase();
     } else if (question.type === QuestionType.TargetToSourceTranslate) {
         return word?.sourceText.toLowerCase() === answer.toLowerCase();
+    } else if (question.type === QuestionType.SourceToTargetInput) {
+        const correctAnswer = word?.translation.toLowerCase();
+        const normalizedAnswer = answer
+            .toLowerCase()
+            .replace(/[^a-zA-Z0-9]+/g, "");
+        const normalizedCorrect = correctAnswer?.replace(/[^a-zA-Z0-9]+/g, "");
+
+        return normalizedAnswer === normalizedCorrect;
     }
 
     return false;

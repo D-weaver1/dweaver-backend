@@ -1,4 +1,5 @@
 import app from "./app";
+import { presetData } from "./data-preset";
 import db from "./data-source";
 import { env } from "./env";
 import { setupFixtures } from "./fixtures";
@@ -8,8 +9,11 @@ const start = async () => {
         await db.initialize();
         console.log("Postgres: connected");
 
-        setupFixtures();
-        console.log("Fixtures: loaded");
+        if (await setupFixtures()) {
+            console.log("Fixtures: loaded");
+        }
+
+        await presetData();
 
         app.listen(env.PORT, () => {
             console.log(`Server started on port ${env.PORT}`);

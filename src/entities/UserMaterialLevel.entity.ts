@@ -4,6 +4,7 @@ import {
     JoinColumn,
     ManyToOne,
     PrimaryGeneratedColumn,
+    UpdateDateColumn,
 } from "typeorm";
 import { User } from "./User.entity";
 import { MaterialLevel } from "./MaterialLevel.entity";
@@ -28,4 +29,7 @@ export class UserMaterialLevel {
         default: UserMaterialStatus.NOT_STARTED,
     })
     status!: UserMaterialStatus;
+
+    @UpdateDateColumn({ name: "updated_at" })
+    updatedAt!: Date;
 }

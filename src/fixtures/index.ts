@@ -85,18 +85,6 @@ const setupTextTemplates = async (languages: {
 
     const templates = [
         {
-            type: QuestionType.SourceSynonym,
-            en: "Find a synonym for the word: {{word}}",
-            de: "Finden Sie ein Synonym für das Wort: {{word}}",
-            uk: "Знайдіть синонім до слова: {{word}}",
-        },
-        {
-            type: QuestionType.TargetSynonym,
-            en: "Find a synonym for the word: {{word}}",
-            de: "Finden Sie ein Synonym für das Wort: {{word}}",
-            uk: "Знайдіть синонім до слова: {{word}}",
-        },
-        {
             type: QuestionType.SourceToTargetTranslate,
             en: "Translate the word to {{targetLanguage}}: {{word}}",
             de: "Übersetzen Sie das Wort in {{targetLanguage}}: {{word}}",
@@ -685,7 +673,7 @@ export const setupFixtures = async () => {
     const userRepo = db.getRepository(User);
 
     if ((await userRepo.count()) !== 0) {
-        return;
+        return false;
     }
 
     const lng = await setupLanguages();
@@ -693,4 +681,6 @@ export const setupFixtures = async () => {
 
     await setupTextTemplates(lng.languages);
     await setupWords(user.id);
+
+    return true;
 };
