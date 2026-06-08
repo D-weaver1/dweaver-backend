@@ -1,10 +1,16 @@
 import { Router } from "express";
-import { AuthResponse } from "../adaptive-reading-module/auth/types/auth-request.type";
-import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth.middleware";
-import db from "../data-source";
-import { Dictionary, DictionaryWord, Word } from "../entities";
-import { QuizService } from "./services";
-import PdfGenerator from "./services/PdfGenerator";
+import { AuthResponse } from "../../adaptive-reading-module/auth/types/auth-request.type";
+import { authMiddleware } from "../../adaptive-reading-module/auth/middlewares/auth.middleware";
+import db from "../../data-source";
+import { Dictionary, DictionaryWord, Word } from "../../entities";
+import { QuizService } from "../services";
+import PdfGenerator from "../services/PdfGenerator";
+import {
+    dictionaryAddWordBodySchema,
+    dictionaryExportPdfQuerySchema,
+    dictionaryIdParamsSchema,
+    dictionaryLanguagePairParamsSchema,
+} from "./schemas";
 
 const dictionaryRepo = db.getRepository(Dictionary);
 const dictionaryWordRepo = db.getRepository(DictionaryWord);
@@ -51,11 +57,18 @@ router.get(
     authMiddleware,
     async (req, res: AuthResponse) => {
         const user = res.locals.user;
-        const languagePairId = req.params.languagePairId;
+        const paramsResult = dictionaryLanguagePairParamsSchema.safeParse(
+            req.params
+        );
 
-        if (!languagePairId) {
-            return res.status(400).json({ error: "Invalid dictionary ID" });
+        if (!paramsResult.success) {
+            return res.status(400).json({
+                message: "Invalid request params",
+                error: paramsResult.error.flatten(),
+            });
         }
+
+        const { languagePairId } = paramsResult.data;
 
         const dictionary = await dictionaryRepo.findOne({
             where: {
@@ -102,15 +115,28 @@ router.post(
     authMiddleware,
     async (req, res: AuthResponse) => {
         const user = res.locals.user;
-        const languagePairId = req.params.languagePairId;
-        const mode = (req.query.mode as string) || "s_t";
-        const query = (req.query.query ? String(req.query.query) : "")
-            .trim()
-            .toLowerCase();
+        const paramsResult = dictionaryLanguagePairParamsSchema.safeParse(
+            req.params
+        );
+        const queryResult = dictionaryExportPdfQuerySchema.safeParse(req.query);
 
-        if (!languagePairId) {
-            return res.status(400).json({ error: "Invalid dictionary ID" });
+        if (!paramsResult.success) {
+            return res.status(400).json({
+                message: "Invalid request params",
+                error: paramsResult.error.flatten(),
+            });
         }
+
+        if (!queryResult.success) {
+            return res.status(400).json({
+                message: "Invalid request query",
+                error: queryResult.error.flatten(),
+            });
+        }
+
+        const { languagePairId } = paramsResult.data;
+        const { mode, query = "" } = queryResult.data;
+        const normalizedQuery = query.toLowerCase();
 
         const dictionary = await dictionaryRepo.findOne({
             where: {
@@ -142,8 +168,12 @@ router.post(
             const filtered = query
                 ? dictionaryWords.filter(
                       (dw) =>
-                          dw.word.sourceText.toLowerCase().includes(query) ||
-                          dw.word.translation.toLowerCase().includes(query)
+                          dw.word.sourceText
+                              .toLowerCase()
+                              .includes(normalizedQuery) ||
+                          dw.word.translation
+                              .toLowerCase()
+                              .includes(normalizedQuery)
                   )
                 : dictionaryWords;
             const key = mode === "s_t" ? "sourceText" : "translation";
@@ -185,11 +215,16 @@ router.post(
     authMiddleware,
     async (req, res: AuthResponse) => {
         const user = res.locals.user;
-        const dictionaryId = req.params.id;
+        const paramsResult = dictionaryIdParamsSchema.safeParse(req.params);
 
-        if (!dictionaryId) {
-            return res.status(400).json({ error: "Invalid dictionary ID" });
+        if (!paramsResult.success) {
+            return res.status(400).json({
+                message: "Invalid request params",
+                error: paramsResult.error.flatten(),
+            });
         }
+
+        const { id: dictionaryId } = paramsResult.data;
 
         const dictionary = await dictionaryRepo.findOne({
             where: { id: dictionaryId },
@@ -221,13 +256,16 @@ router.post(
 
 router.post("/add-word", authMiddleware, async (req, res: AuthResponse) => {
     const user = res.locals.user;
-    const { wordId, languagePairId } = req.body;
+    const bodyResult = dictionaryAddWordBodySchema.safeParse(req.body);
 
-    if (!languagePairId || !wordId) {
-        return res
-            .status(400)
-            .json({ error: "Invalid dictionary ID or word ID" });
+    if (!bodyResult.success) {
+        return res.status(400).json({
+            message: "Invalid request body",
+            error: bodyResult.error.flatten(),
+        });
     }
+
+    const { wordId, languagePairId } = bodyResult.data;
 
     const existing = await dictionaryWordRepo.findOne({
         where: {

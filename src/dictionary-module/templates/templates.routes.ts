@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { authMiddleware } from "../adaptive-reading-module/auth/middlewares/auth.middleware";
-import { rolesMiddleware } from "../adaptive-reading-module/auth/middlewares/roles.middleware";
+import { authMiddleware } from "../../adaptive-reading-module/auth/middlewares/auth.middleware";
+import { rolesMiddleware } from "../../adaptive-reading-module/auth/middlewares/roles.middleware";
 import {
     Language,
     LanguageTextTemplate,
     TextTemplate,
     UserRole,
-} from "../entities";
-import db from "../data-source";
-import { QuestionType } from "../entities/Question.entity";
+} from "../../entities";
+import db from "../../data-source";
+import { upsertTemplateBodySchema } from "./schemas";
 
 const router = Router();
 const textTemplateRepo = db.getRepository(TextTemplate);
@@ -56,13 +56,17 @@ router.post(
     rolesMiddleware(UserRole.ADMIN),
     async (req, res) => {
         try {
-            const { questionType, languageTextTemplates } = req.body as {
-                questionType: QuestionType;
-                languageTextTemplates: {
-                    languageId: string;
-                    template: string;
-                }[];
-            };
+            const bodyResult = upsertTemplateBodySchema.safeParse(req.body);
+
+            if (!bodyResult.success) {
+                res.status(400).json({
+                    message: "Invalid request body",
+                    error: bodyResult.error.flatten(),
+                });
+                return;
+            }
+
+            const { questionType, languageTextTemplates } = bodyResult.data;
 
             let textTemplate = await textTemplateRepo.findOne({
                 where: { questionType },
