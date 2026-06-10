@@ -54,6 +54,19 @@ export class AiAnalysisJobWorkerService {
 
         console.log(`[AI_WORKER] Processing job ${job.id}`);
 
+        this.logJson(`[AI_WORKER] Job ${job.id}: picked job`, {
+            id: job.id,
+            title: job.title,
+            languageLevel: job.languageLevel,
+            status: job.status,
+            attemptCount: job.attemptCount,
+            currentChunkIndex: job.currentChunkIndex,
+            totalChunks: job.totalChunks,
+            nextAttemptAt: job.nextAttemptAt,
+            startedAt: job.startedAt,
+            completedAt: job.completedAt,
+        });
+
         const payload = await this.aiAnalysisJobRepository.findPayloadByJobId(
             job.id
         );
@@ -65,6 +78,20 @@ export class AiAnalysisJobWorkerService {
             );
             return;
         }
+
+        this.logJson(`[AI_WORKER] Job ${job.id}: loaded payload`, {
+            id: payload.id,
+            jobId: job.id,
+            hasOriginalText: Boolean(payload.originalText),
+            originalTextLength: payload.originalText.length,
+            hasChunksJson: Boolean(payload.chunksJson),
+            hasPartialResultJson: Boolean(payload.partialResultJson),
+        });
+
+        this.logText(
+            `[AI_WORKER] Job ${job.id}: original text from payload:`,
+            payload.originalText
+        );
 
         try {
             const sourceLanguage = job.languagePair.sourceLanguage.code;
@@ -79,6 +106,32 @@ export class AiAnalysisJobWorkerService {
                 chunksJson: payload.chunksJson,
                 partialResultJson: payload.partialResultJson,
             });
+
+            this.logJson(
+                `[AI_WORKER] Job ${job.id}: processing state created/loaded`,
+                {
+                    chunksCount: processingState.chunks.length,
+                    partialTextUnitsCount:
+                        processingState.partialResult.text_units.length,
+                    partialPairsCount:
+                        processingState.partialResult.pairs.length,
+                }
+            );
+
+            this.logJson(
+                `[AI_WORKER] Job ${job.id}: chunks summary`,
+                processingState.chunks.map((chunk) => ({
+                    index: chunk.index,
+                    estimatedTokens: chunk.estimatedTokens,
+                    textLength: chunk.text.length,
+                    text: chunk.text,
+                }))
+            );
+
+            this.logJson(
+                `[AI_WORKER] Job ${job.id}: current partial result`,
+                processingState.partialResult
+            );
 
             let partialResult = processingState.partialResult;
             const chunks = processingState.chunks;
@@ -101,6 +154,22 @@ export class AiAnalysisJobWorkerService {
                     }/${chunks.length}`
                 );
 
+                this.logJson(
+                    `[AI_WORKER] Job ${job.id}: current chunk metadata`,
+                    {
+                        chunkIndex,
+                        visibleChunkNumber: chunkIndex + 1,
+                        totalChunks: chunks.length,
+                        estimatedTokens: chunk.estimatedTokens,
+                        textLength: chunk.text.length,
+                    }
+                );
+
+                this.logText(
+                    `[AI_WORKER] Job ${job.id}: chunk ${chunkIndex + 1} text:`,
+                    chunk.text
+                );
+
                 const chunkResult =
                     await this.aiTextAnalysisService.analyzeChunk({
                         title: job.title,
@@ -111,9 +180,19 @@ export class AiAnalysisJobWorkerService {
                         chunkIndex,
                     });
 
+                this.logJson(
+                    `[AI_WORKER] Job ${job.id}: chunk ${chunkIndex + 1} analysis result`,
+                    chunkResult
+                );
+
                 partialResult = this.aiTextAnalysisService.mergeChunkResult(
                     partialResult,
                     chunkResult
+                );
+
+                this.logJson(
+                    `[AI_WORKER] Job ${job.id}: partial result after merging chunk ${chunkIndex + 1}`,
+                    partialResult
                 );
 
                 const nextChunkIndex = chunkIndex + 1;
@@ -152,6 +231,11 @@ export class AiAnalysisJobWorkerService {
                 `[AI_WORKER] Job ${job.id}: sending result to material-processing module`
             );
 
+            this.logJson(
+                `[AI_WORKER] Job ${job.id}: result for adaptive reading module`,
+                resultForSecondModule
+            );
+
             const materialProcessingResult =
                 await this.materialProcessingService.createMaterialFromJson(
                     resultForSecondModule
@@ -167,7 +251,15 @@ export class AiAnalysisJobWorkerService {
                 resultForSecondModule
             );
 
+            console.log(
+                `[AI_WORKER] Job ${job.id}: AI result saved to job.result_json`
+            );
+
             await this.aiAnalysisJobRepository.deletePayloadByJobId(job.id);
+
+            console.log(
+                `[AI_WORKER] Job ${job.id}: payload deleted after successful completion`
+            );
 
             console.log(`[AI_WORKER] Job ${job.id} completed`);
         } catch (error) {
@@ -176,12 +268,29 @@ export class AiAnalysisJobWorkerService {
 
             console.error(`[AI_WORKER] Job ${job.id} failed: ${message}`);
 
+            this.logJson(`[AI_WORKER] Job ${job.id}: failure context`, {
+                id: job.id,
+                title: job.title,
+                status: job.status,
+                attemptCount: job.attemptCount,
+                currentChunkIndex: job.currentChunkIndex,
+                totalChunks: job.totalChunks,
+                errorMessage: message,
+            });
+
             if (this.isDailyLimitError(message)) {
+                const nextAttemptAt = this.getNextDayDate();
+
+                console.warn(
+                    `[AI_WORKER] Job ${job.id}: Gemini daily limit reached, next attempt scheduled at ${nextAttemptAt.toISOString()}`
+                );
+
                 await this.aiAnalysisJobRepository.markWaitingRateLimit(
                     job,
                     message,
-                    this.getNextDayDate()
+                    nextAttemptAt
                 );
+
                 return;
             }
 
@@ -302,12 +411,15 @@ export class AiAnalysisJobWorkerService {
     }
 
     private isDailyLimitError(message: string): boolean {
-        const normalized = message.toLowerCase();
+        const normalized = message.toLowerCase().replace(/\s+/g, "");
 
         return (
             normalized.includes("daily") ||
             normalized.includes("rpd") ||
-            normalized.includes("requests per day")
+            normalized.includes("requestsperday") ||
+            normalized.includes("generaterequestsperday") ||
+            normalized.includes("perdayperproject") ||
+            normalized.includes("generate_content_free_tier_requests")
         );
     }
 
@@ -342,5 +454,19 @@ export class AiAnalysisJobWorkerService {
         );
 
         return new Date(Date.now() + delayMs);
+    }
+
+    private logText(label: string, value: string): void {
+        console.log(label);
+        console.log("=".repeat(80));
+        console.log(value);
+        console.log("=".repeat(80));
+    }
+
+    private logJson(label: string, value: unknown): void {
+        console.log(label);
+        console.log("=".repeat(80));
+        console.log(JSON.stringify(value, null, 2));
+        console.log("=".repeat(80));
     }
 }

@@ -73,7 +73,19 @@ export class AiTextAnalysisService {
             params.originalText
         );
 
+        this.logText("[AI_PREPROCESS] Original text:", params.originalText);
+        this.logText("[AI_PREPROCESS] Preprocessed text:", preprocessedText);
+
         const chunks = this.textChunkerService.split(preprocessedText);
+
+        this.logJson(
+            "[AI_CHUNKER] Prepared chunks:",
+            chunks.map((chunk) => ({
+                index: chunk.index,
+                estimatedTokens: chunk.estimatedTokens,
+                text: chunk.text,
+            }))
+        );
 
         const initialResult = this.analysisResultMergerService.createBaseResult(
             {
@@ -83,6 +95,8 @@ export class AiTextAnalysisService {
                 originalText: preprocessedText,
             }
         );
+
+        this.logJson("[AI_STATE] Initial result:", initialResult);
 
         return {
             preprocessedText,
@@ -108,6 +122,16 @@ export class AiTextAnalysisService {
         });
 
         let prompt = originalPrompt;
+
+        this.logText(
+            `[AI_CHUNK] Chunk ${params.chunkIndex + 1}: text prepared for prompt:`,
+            params.chunkText
+        );
+
+        this.logText(
+            `[AI_PROMPT] Chunk ${params.chunkIndex + 1}: initial prompt sent to AI:`,
+            prompt
+        );
 
         for (
             let validationAttempt = 1;
@@ -140,6 +164,11 @@ export class AiTextAnalysisService {
                     console.log(
                         "[AI] Raw response length:",
                         rawResponse.length
+                    );
+
+                    this.logText(
+                        `[AI_RAW_RESPONSE] Chunk ${params.chunkIndex + 1}: raw response:`,
+                        rawResponse
                     );
 
                     break;
@@ -192,11 +221,21 @@ export class AiTextAnalysisService {
 
                 console.log("[AI] Parsed response successfully");
 
+                this.logJson(
+                    `[AI_PARSED] Chunk ${params.chunkIndex + 1}: parsed response:`,
+                    parsedResponse
+                );
+
                 const validatedResponse =
                     this.responseValidatorService.validate(parsedResponse);
 
                 console.log(
                     `[AI] Chunk ${params.chunkIndex + 1}: validation passed`
+                );
+
+                this.logJson(
+                    `[AI_VALIDATED] Chunk ${params.chunkIndex + 1}: validated response:`,
+                    validatedResponse
                 );
 
                 return validatedResponse;
@@ -224,6 +263,11 @@ export class AiTextAnalysisService {
                     validationError: validationErrorMessage,
                     previousResponse: rawResponse,
                 });
+
+                this.logText(
+                    `[AI_RETRY_PROMPT] Chunk ${params.chunkIndex + 1}: retry prompt:`,
+                    prompt
+                );
             }
         }
 
@@ -262,12 +306,15 @@ export class AiTextAnalysisService {
     }
 
     private isDailyLimitError(message: string): boolean {
-        const normalizedMessage = message.toLowerCase();
+        const normalized = message.toLowerCase().replace(/\s+/g, "");
 
         return (
-            normalizedMessage.includes("daily") ||
-            normalizedMessage.includes("rpd") ||
-            normalizedMessage.includes("requests per day")
+            normalized.includes("daily") ||
+            normalized.includes("rpd") ||
+            normalized.includes("requestsperday") ||
+            normalized.includes("generaterequestsperday") ||
+            normalized.includes("perdayperproject") ||
+            normalized.includes("generate_content_free_tier_requests")
         );
     }
 
@@ -291,5 +338,19 @@ export class AiTextAnalysisService {
         return new Promise((resolve) => {
             setTimeout(resolve, ms);
         });
+    }
+
+    private logText(label: string, value: string): void {
+        console.log(label);
+        console.log("=".repeat(80));
+        console.log(value);
+        console.log("=".repeat(80));
+    }
+
+    private logJson(label: string, value: unknown): void {
+        console.log(label);
+        console.log("=".repeat(80));
+        console.log(JSON.stringify(value, null, 2));
+        console.log("=".repeat(80));
     }
 }
