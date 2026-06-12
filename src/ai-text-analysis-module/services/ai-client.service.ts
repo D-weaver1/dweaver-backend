@@ -103,10 +103,11 @@ export class AiClientService {
             estimatedPromptTokens
         );
 
-        console.log("[GEMINI] Sending request...");
-        console.log("[GEMINI] Model:", env.GEMINI_MODEL);
-        console.log("[GEMINI] Prompt length:", prompt.length);
-        console.log("[GEMINI] Estimated prompt tokens:", estimatedPromptTokens);
+        console.log("[GEMINI] Sending request", {
+            model: env.GEMINI_MODEL,
+            promptLength: prompt.length,
+            estimatedPromptTokens,
+        });
 
         const startedAt = Date.now();
 
@@ -140,9 +141,11 @@ export class AiClientService {
 
         const finishedAt = Date.now();
 
-        console.log("[GEMINI] Response received");
-        console.log("[GEMINI] Status:", response.status, response.statusText);
-        console.log("[GEMINI] Duration ms:", finishedAt - startedAt);
+        console.log("[GEMINI] Response received", {
+            status: response.status,
+            statusText: response.statusText,
+            durationMs: finishedAt - startedAt,
+        });
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -162,10 +165,8 @@ export class AiClientService {
         const usage = data.usageMetadata;
 
         if (usage) {
-            console.log("[GEMINI] Token usage:", {
+            console.log("[GEMINI] Token usage", {
                 promptTokenCount: usage.promptTokenCount,
-                candidatesTokenCount: usage.candidatesTokenCount,
-                thoughtsTokenCount: usage.thoughtsTokenCount,
                 totalTokenCount: usage.totalTokenCount,
             });
 

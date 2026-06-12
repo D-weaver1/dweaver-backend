@@ -79,19 +79,11 @@ export class AiAnalysisJobWorkerService {
             return;
         }
 
-        this.logJson(`[AI_WORKER] Job ${job.id}: loaded payload`, {
-            id: payload.id,
-            jobId: job.id,
-            hasOriginalText: Boolean(payload.originalText),
+        console.log(`[AI_WORKER] Job ${job.id}: payload loaded`, {
             originalTextLength: payload.originalText.length,
             hasChunksJson: Boolean(payload.chunksJson),
             hasPartialResultJson: Boolean(payload.partialResultJson),
         });
-
-        this.logText(
-            `[AI_WORKER] Job ${job.id}: original text from payload:`,
-            payload.originalText
-        );
 
         try {
             const sourceLanguage = job.languagePair.sourceLanguage.code;
@@ -107,30 +99,20 @@ export class AiAnalysisJobWorkerService {
                 partialResultJson: payload.partialResultJson,
             });
 
-            this.logJson(
-                `[AI_WORKER] Job ${job.id}: processing state created/loaded`,
-                {
-                    chunksCount: processingState.chunks.length,
-                    partialTextUnitsCount:
-                        processingState.partialResult.text_units.length,
-                    partialPairsCount:
-                        processingState.partialResult.pairs.length,
-                }
-            );
+            console.log(`[AI_WORKER] Job ${job.id}: processing state ready`, {
+                chunksCount: processingState.chunks.length,
+                partialTextUnitsCount:
+                    processingState.partialResult.text_units.length,
+                partialPairsCount: processingState.partialResult.pairs.length,
+            });
 
-            this.logJson(
+            console.log(
                 `[AI_WORKER] Job ${job.id}: chunks summary`,
                 processingState.chunks.map((chunk) => ({
                     index: chunk.index,
                     estimatedTokens: chunk.estimatedTokens,
                     textLength: chunk.text.length,
-                    text: chunk.text,
                 }))
-            );
-
-            this.logJson(
-                `[AI_WORKER] Job ${job.id}: current partial result`,
-                processingState.partialResult
             );
 
             let partialResult = processingState.partialResult;
@@ -154,7 +136,7 @@ export class AiAnalysisJobWorkerService {
                     }/${chunks.length}`
                 );
 
-                this.logJson(
+                console.log(
                     `[AI_WORKER] Job ${job.id}: current chunk metadata`,
                     {
                         chunkIndex,
@@ -163,11 +145,6 @@ export class AiAnalysisJobWorkerService {
                         estimatedTokens: chunk.estimatedTokens,
                         textLength: chunk.text.length,
                     }
-                );
-
-                this.logText(
-                    `[AI_WORKER] Job ${job.id}: chunk ${chunkIndex + 1} text:`,
-                    chunk.text
                 );
 
                 const chunkResult =
@@ -180,9 +157,12 @@ export class AiAnalysisJobWorkerService {
                         chunkIndex,
                     });
 
-                this.logJson(
-                    `[AI_WORKER] Job ${job.id}: chunk ${chunkIndex + 1} analysis result`,
-                    chunkResult
+                console.log(
+                    `[AI_WORKER] Job ${job.id}: chunk ${chunkIndex + 1} analysis completed`,
+                    {
+                        textUnitsCount: chunkResult.text_units.length,
+                        pairsCount: chunkResult.pairs.length,
+                    }
                 );
 
                 partialResult = this.aiTextAnalysisService.mergeChunkResult(
@@ -190,9 +170,14 @@ export class AiAnalysisJobWorkerService {
                     chunkResult
                 );
 
-                this.logJson(
-                    `[AI_WORKER] Job ${job.id}: partial result after merging chunk ${chunkIndex + 1}`,
-                    partialResult
+                console.log(
+                    `[AI_WORKER] Job ${job.id}: partial result updated`,
+                    {
+                        processedChunks: chunkIndex + 1,
+                        totalChunks: chunks.length,
+                        textUnitsCount: partialResult.text_units.length,
+                        pairsCount: partialResult.pairs.length,
+                    }
                 );
 
                 const nextChunkIndex = chunkIndex + 1;
@@ -231,9 +216,12 @@ export class AiAnalysisJobWorkerService {
                 `[AI_WORKER] Job ${job.id}: sending result to material-processing module`
             );
 
-            this.logJson(
-                `[AI_WORKER] Job ${job.id}: result for adaptive reading module`,
-                resultForSecondModule
+            console.log(
+                `[AI_WORKER] Job ${job.id}: result prepared for adaptive reading`,
+                {
+                    textUnitsCount: resultForSecondModule.text_units.length,
+                    pairsCount: resultForSecondModule.pairs.length,
+                }
             );
 
             const materialProcessingResult =
@@ -243,7 +231,14 @@ export class AiAnalysisJobWorkerService {
 
             console.log(
                 `[AI_WORKER] Job ${job.id}: material-processing completed`,
-                materialProcessingResult
+                {
+                    materialId: materialProcessingResult.materialId,
+                    languagePairId: materialProcessingResult.languagePairId,
+                    totalTranslatableCount:
+                        materialProcessingResult.totalTranslatableCount,
+                    createdLevelsCount:
+                        materialProcessingResult.createdLevels?.length ?? 0,
+                }
             );
 
             await this.aiAnalysisJobRepository.markCompleted(
@@ -268,8 +263,7 @@ export class AiAnalysisJobWorkerService {
 
             console.error(`[AI_WORKER] Job ${job.id} failed: ${message}`);
 
-            this.logJson(`[AI_WORKER] Job ${job.id}: failure context`, {
-                id: job.id,
+            console.warn(`[AI_WORKER] Job ${job.id}: failure context`, {
                 title: job.title,
                 status: job.status,
                 attemptCount: job.attemptCount,
@@ -456,12 +450,12 @@ export class AiAnalysisJobWorkerService {
         return new Date(Date.now() + delayMs);
     }
 
-    private logText(label: string, value: string): void {
-        console.log(label);
-        console.log("=".repeat(80));
-        console.log(value);
-        console.log("=".repeat(80));
-    }
+    // private logText(label: string, value: string): void {
+    //     console.log(label);
+    //     console.log("=".repeat(80));
+    //     console.log(value);
+    //     console.log("=".repeat(80));
+    // }
 
     private logJson(label: string, value: unknown): void {
         console.log(label);

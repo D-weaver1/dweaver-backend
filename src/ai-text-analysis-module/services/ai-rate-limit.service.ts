@@ -58,8 +58,12 @@ export class AiRateLimitService {
 
         this.dailyRequestCount += 1;
 
-        console.log("[RATE_LIMIT] Gemini request reserved");
-        console.log("[RATE_LIMIT] Current usage:", this.getSnapshot());
+        const snapshot = this.getSnapshot();
+
+        console.log("[RATE_LIMIT] Gemini request reserved", {
+            rpm: `${snapshot.rpm.used}/${snapshot.rpm.limit}`,
+            rpd: `${snapshot.rpd.used}/${snapshot.rpd.limit}`,
+        });
 
         return reservationId;
     }
@@ -80,8 +84,10 @@ export class AiRateLimitService {
 
         const snapshot = this.getSnapshot();
 
-        console.log("[RATE_LIMIT] Gemini request completed");
-        console.log("[RATE_LIMIT] Current usage:", snapshot);
+        console.log("[RATE_LIMIT] Gemini request completed", {
+            rpm: `${snapshot.rpm.used}/${snapshot.rpm.limit}`,
+            rpd: `${snapshot.rpd.used}/${snapshot.rpd.limit}`,
+        });
 
         return snapshot;
     }

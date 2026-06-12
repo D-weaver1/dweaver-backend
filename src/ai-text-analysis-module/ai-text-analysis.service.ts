@@ -73,17 +73,20 @@ export class AiTextAnalysisService {
             params.originalText
         );
 
-        this.logText("[AI_PREPROCESS] Original text:", params.originalText);
-        this.logText("[AI_PREPROCESS] Preprocessed text:", preprocessedText);
-
         const chunks = this.textChunkerService.split(preprocessedText);
 
-        this.logJson(
-            "[AI_CHUNKER] Prepared chunks:",
+        console.log("[AI_PREPROCESS] Text prepared", {
+            originalLength: params.originalText.length,
+            preprocessedLength: preprocessedText.length,
+            chunksCount: chunks.length,
+        });
+
+        console.log(
+            "[AI_CHUNKER] Prepared chunks",
             chunks.map((chunk) => ({
                 index: chunk.index,
                 estimatedTokens: chunk.estimatedTokens,
-                text: chunk.text,
+                textLength: chunk.text.length,
             }))
         );
 
@@ -96,7 +99,10 @@ export class AiTextAnalysisService {
             }
         );
 
-        this.logJson("[AI_STATE] Initial result:", initialResult);
+        console.log("[AI_STATE] Initial result created", {
+            textUnitsCount: initialResult.text_units.length,
+            pairsCount: initialResult.pairs.length,
+        });
 
         return {
             preprocessedText,
@@ -123,15 +129,10 @@ export class AiTextAnalysisService {
 
         let prompt = originalPrompt;
 
-        this.logText(
-            `[AI_CHUNK] Chunk ${params.chunkIndex + 1}: text prepared for prompt:`,
-            params.chunkText
-        );
-
-        this.logText(
-            `[AI_PROMPT] Chunk ${params.chunkIndex + 1}: initial prompt sent to AI:`,
-            prompt
-        );
+        console.log(`[AI] Chunk ${params.chunkIndex + 1}: prompt prepared`, {
+            chunkTextLength: params.chunkText.length,
+            promptLength: prompt.length,
+        });
 
         for (
             let validationAttempt = 1;
@@ -160,15 +161,9 @@ export class AiTextAnalysisService {
 
                     rawResponse = await this.aiClientService.analyze(prompt);
 
-                    console.log("[AI] Raw response received");
                     console.log(
-                        "[AI] Raw response length:",
-                        rawResponse.length
-                    );
-
-                    this.logText(
-                        `[AI_RAW_RESPONSE] Chunk ${params.chunkIndex + 1}: raw response:`,
-                        rawResponse
+                        `[AI] Chunk ${params.chunkIndex + 1}: raw response received`,
+                        { length: rawResponse.length }
                     );
 
                     break;
@@ -219,23 +214,19 @@ export class AiTextAnalysisService {
                 const parsedResponse =
                     this.responseParserService.parse(rawResponse);
 
-                console.log("[AI] Parsed response successfully");
-
-                this.logJson(
-                    `[AI_PARSED] Chunk ${params.chunkIndex + 1}: parsed response:`,
-                    parsedResponse
+                console.log(
+                    `[AI] Chunk ${params.chunkIndex + 1}: response parsed successfully`
                 );
 
                 const validatedResponse =
                     this.responseValidatorService.validate(parsedResponse);
 
                 console.log(
-                    `[AI] Chunk ${params.chunkIndex + 1}: validation passed`
-                );
-
-                this.logJson(
-                    `[AI_VALIDATED] Chunk ${params.chunkIndex + 1}: validated response:`,
-                    validatedResponse
+                    `[AI] Chunk ${params.chunkIndex + 1}: validation passed`,
+                    {
+                        textUnitsCount: validatedResponse.text_units.length,
+                        pairsCount: validatedResponse.pairs.length,
+                    }
                 );
 
                 return validatedResponse;
@@ -264,9 +255,12 @@ export class AiTextAnalysisService {
                     previousResponse: rawResponse,
                 });
 
-                this.logText(
-                    `[AI_RETRY_PROMPT] Chunk ${params.chunkIndex + 1}: retry prompt:`,
-                    prompt
+                console.log(
+                    `[AI] Chunk ${params.chunkIndex + 1}: retry prompt prepared`,
+                    {
+                        promptLength: prompt.length,
+                        validationError: validationErrorMessage,
+                    }
                 );
             }
         }
@@ -340,17 +334,17 @@ export class AiTextAnalysisService {
         });
     }
 
-    private logText(label: string, value: string): void {
-        console.log(label);
-        console.log("=".repeat(80));
-        console.log(value);
-        console.log("=".repeat(80));
-    }
+    //     private logText(label: string, value: string): void {
+    //         console.log(label);
+    //         console.log("=".repeat(80));
+    //         console.log(value);
+    //         console.log("=".repeat(80));
+    //     }
 
-    private logJson(label: string, value: unknown): void {
-        console.log(label);
-        console.log("=".repeat(80));
-        console.log(JSON.stringify(value, null, 2));
-        console.log("=".repeat(80));
-    }
+    //     private logJson(label: string, value: unknown): void {
+    //         console.log(label);
+    //         console.log("=".repeat(80));
+    //         console.log(JSON.stringify(value, null, 2));
+    //         console.log("=".repeat(80));
+    //     }
 }
